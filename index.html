@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="ShinPoW" />
+  <meta name="description" content="지훈 & 이현의 독립 Proof-of-Work 타임·활동·추억 블록체인 허브" />
+  <title>ShinPoW — 지훈 &amp; 이현 타임 &amp; 활동 블록체인</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="./assets/icon.svg" />
+  <link rel="apple-touch-icon" href="./assets/icon.svg" />
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    }
+    .font-mono-code {
+      font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.35); }
+      50% { box-shadow: 0 0 24px 4px rgba(245, 158, 11, 0.55); }
+    }
+    .mining-glow {
+      animation: pulseGlow 1.1s infinite ease-in-out;
+    }
+    /* Mempool.space-style 3D block bevel */
+    .mempool-cube {
+      position: relative;
+      box-shadow: 0 8px 20px -6px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+      transition: transform 0.16s ease, box-shadow 0.16s ease;
+    }
+    .mempool-cube:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 24px -6px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    }
+    .mempool-strip::-webkit-scrollbar {
+      height: 6px;
+    }
+    .mempool-strip::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 9999px;
+    }
+    .mempool-strip::-webkit-scrollbar-thumb {
+      background: rgba(71, 85, 105, 0.7);
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen antialiased selection:bg-amber-500/30 selection:text-amber-200 pb-12">
+
+  <!-- Toast Container -->
+  <div id="toastContainer" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
+
+  <!-- Header -->
+  <header class="border-b border-slate-800/80 bg-slate-900/85 backdrop-blur sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <img src="./assets/icon.svg" alt="ShinPoW" class="w-10 h-10 rounded-xl shadow-lg shadow-amber-500/15" />
+        <div>
+          <h1 class="text-base sm:text-lg font-bold tracking-tight text-white flex items-center gap-2 flex-wrap">
+            <span>ShinPoW 타임 체인 허브</span>
+            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-mono-code">Protocol v1</span>
+            <span id="networkModeBadge" class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 font-mono-code">PREVIEW</span>
+          </h1>
+          <p class="text-xs text-slate-400">수학·학습·게임시간·추억을 블록체인에 영구 기록하는 나만의 원장</p>
+        </div>
+      </div>
+
+      <!-- Compact Top Actions -->
+      <div class="flex items-center gap-2">
+        <button id="btnInstallPwa" type="button" class="hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition cursor-pointer">
+          <i data-lucide="smartphone" class="w-3.5 h-3.5"></i>
+          앱 설치
+        </button>
+        <button id="btnParentToggle" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer">
+          <i data-lucide="lock" class="w-3.5 h-3.5"></i>
+          <span id="parentToggleLabel">학부모 모드</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Parent Toolbar (Hidden until PIN unlock) -->
+    <div id="parentBar" class="hidden border-t border-indigo-500/25 bg-indigo-950/35">
+      <div class="max-w-6xl mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-2">
+        <span class="text-xs font-semibold text-indigo-200 flex items-center gap-1.5">
+          <i data-lucide="shield" class="w-3.5 h-3.5 text-indigo-400"></i>
+          학부모 관리 도구
+        </span>
+        <div class="flex items-center gap-2 flex-wrap">
+          <button id="btnAddProblem" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition cursor-pointer">
+            <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+            문제 출제
+          </button>
+          <button id="btnImportJson" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition cursor-pointer">
+            <i data-lucide="file-up" class="w-3.5 h-3.5"></i>
+            JSON 가져오기
+          </button>
+          <button id="btnSyncFeed" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            피드 동기화
+          </button>
+          <button id="btnExportJson" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+            원장 백업
+          </button>
+          <button id="btnRestoreOpen" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer">
+            <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+            원장 복원
+          </button>
+          <button id="btnAnchorOpen" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600/80 hover:bg-blue-500 text-white transition cursor-pointer">
+            <i data-lucide="link-2" class="w-3.5 h-3.5"></i>
+            Base 앵커링
+          </button>
+          <button id="btnResetOpen" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-rose-950/70 hover:text-rose-300 text-slate-300 border border-slate-700 hover:border-rose-800/60 transition cursor-pointer">
+            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+            초기화
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-6 space-y-6">
+
+    <!-- Student Chain Switcher & Stats -->
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+      <!-- Switcher -->
+      <div class="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-2 flex gap-2">
+        <button id="tabJihoon" type="button" class="flex-1 rounded-xl px-4 py-3 text-left transition cursor-pointer flex items-center justify-between">
+          <div>
+            <div class="text-[11px] font-semibold uppercase tracking-wider opacity-80">Chain A · 초등 6학년</div>
+            <div class="text-base font-bold mt-0.5">신지훈 체인</div>
+          </div>
+          <div class="text-right">
+            <div id="badgeJihoonTime" class="text-sm font-extrabold font-mono-code">0 TIME</div>
+            <div id="badgeJihoonBlocks" class="text-[11px] opacity-75">1 블록</div>
+          </div>
+        </button>
+
+        <button id="tabLeehyun" type="button" class="flex-1 rounded-xl px-4 py-3 text-left transition cursor-pointer flex items-center justify-between">
+          <div>
+            <div class="text-[11px] font-semibold uppercase tracking-wider opacity-80">Chain B · 초등 3학년</div>
+            <div class="text-base font-bold mt-0.5">신이현 체인</div>
+          </div>
+          <div class="text-right">
+            <div id="badgeLeehyunTime" class="text-sm font-extrabold font-mono-code">0 TIME</div>
+            <div id="badgeLeehyunBlocks" class="text-[11px] opacity-75">1 블록</div>
+          </div>
+        </button>
+      </div>
+
+      <!-- Active Chain Summary Metrics -->
+      <div class="lg:col-span-7 grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex flex-col justify-between">
+          <span class="text-xs text-slate-400">보유 TIME</span>
+          <div class="mt-1 flex items-baseline gap-1">
+            <span id="statTime" class="text-2xl font-extrabold text-amber-400 font-mono-code">0</span>
+            <span id="statUnit" class="text-xs font-semibold text-amber-500/80">TIME</span>
+          </div>
+          <div id="statTimeBreakdown" class="text-[10px] text-slate-500 font-mono-code mt-0.5">+0 획득 · -0 사용</div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex flex-col justify-between">
+          <span class="text-xs text-slate-400">블록 높이</span>
+          <div class="mt-1 flex items-baseline gap-1">
+            <span id="statHeight" class="text-xl font-extrabold text-white font-mono-code">#0</span>
+            <span id="statBlocksCount" class="text-xs text-slate-400">(총 1개)</span>
+          </div>
+          <div id="statMempoolCount" class="text-[10px] text-cyan-400 font-mono-code mt-0.5">멤풀 대기 0건</div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex flex-col justify-between">
+          <span class="text-xs text-slate-400">기록된 활동</span>
+          <div class="mt-1 flex items-center gap-2 text-xs font-bold font-mono-code flex-wrap">
+            <span class="text-amber-300" title="수학 블록">📐 <span id="statMathCount">0</span></span>
+            <span class="text-sky-300" title="학습 블록">📚 <span id="statStudyCount">0</span></span>
+            <span class="text-emerald-300" title="추억·활동 블록">✨ <span id="statMemoryCount">0</span></span>
+            <span class="text-rose-300" title="게임·자유시간">🎮 <span id="statGameCount">0</span></span>
+          </div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex flex-col justify-between">
+          <span class="text-xs text-slate-400">PoW / 온체인</span>
+          <div class="mt-1 flex items-baseline gap-1.5">
+            <span id="statDifficulty" class="text-sm font-bold text-emerald-400 font-mono-code">00...</span>
+            <span id="statAnchored" class="text-[11px] text-slate-400">앵커 0</span>
+          </div>
+          <div class="text-[10px] text-slate-500 mt-0.5">Base L2 준비 완료</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Mempool.space-style Visual Block Chain Explorer -->
+    <section class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <h2 id="mempoolExplorerTitle" class="text-sm sm:text-base font-bold text-white">신지훈 체인 · Mempool 블록 익스플로러</h2>
+          <span class="text-[11px] text-slate-400 hidden sm:inline">블록을 클릭하면 해당 블록에 기록된 활동과 해시 연결을 탐색할 수 있습니다</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="btnVerifyChain" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 transition cursor-pointer">
+            <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+            전체 무결성 검증
+          </button>
+        </div>
+      </div>
+
+      <div id="verifyBanner" class="hidden rounded-xl px-3.5 py-2.5 text-xs font-semibold space-y-1"></div>
+
+      <!-- Horizontal Mempool & Confirmed Blocks Ribbon -->
+      <div id="mempoolRibbon" class="mempool-strip flex items-stretch gap-3 overflow-x-auto pb-2 pt-1"></div>
+
+      <!-- Selected Block Deep Inspector (Mempool.space-style) -->
+      <div id="blockInspector" class="rounded-xl bg-slate-950/90 border border-slate-800 p-4 space-y-3"></div>
+    </section>
+
+    <!-- Main Workspace: Left = Mission & Activity Console, Right = Filterable Permanent Chronicle -->
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+      <!-- Left: Dual-Mode Input & PoW Mining Console -->
+      <div class="lg:col-span-6 space-y-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-5">
+
+          <!-- Module Hub Switcher -->
+          <div class="grid grid-cols-2 gap-2 p-1 rounded-xl bg-slate-950 border border-slate-800">
+            <button id="modeTabMath" type="button" class="py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5">
+              <span>📐</span>
+              <span>오늘의 수학 미션</span>
+            </button>
+            <button id="modeTabActivity" type="button" class="py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5">
+              <span>✨</span>
+              <span>활동 · 추억 · 시간 기록</span>
+              <span id="activityMempoolBadge" class="hidden px-1.5 py-0.5 rounded-full text-[10px] bg-cyan-500/20 text-cyan-300 font-mono-code">0</span>
+            </button>
+          </div>
+
+          <!-- PANEL 1: Math Mission -->
+          <div id="panelMath" class="space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 id="activeStudentTitle" class="text-base sm:text-lg font-bold text-white">신지훈의 오늘의 채굴 미션</h2>
+                <p class="text-xs text-slate-400 mt-0.5">기본 <strong class="text-sky-300">+1 TIME</strong>, 심화 <strong class="text-amber-300">+2 TIME</strong> (순서 무관!)</p>
+              </div>
+              <select id="daySelect" aria-label="날짜별 문제 선택" class="bg-slate-800 border border-slate-700 text-slate-100 text-xs font-semibold rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"></select>
+            </div>
+
+            <!-- Problem 1: Basic (+1 TIME) -->
+            <div id="cardBasic" class="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-3 transition">
+              <div class="flex items-center justify-between gap-2 flex-wrap">
+                <div class="flex items-center gap-2">
+                  <span class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30">기본 · +1 TIME</span>
+                  <span id="basicTopic" class="text-xs text-slate-400 font-medium"></span>
+                </div>
+                <span id="basicStatusBadge" class="text-xs font-semibold text-slate-400">미해결</span>
+              </div>
+              <p id="basicQuestion" class="text-sm sm:text-base text-slate-100 leading-relaxed font-medium"></p>
+              <form id="formBasic" class="flex gap-2">
+                <input id="inputBasic" type="text" autocomplete="off" placeholder="정답 입력..." class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500" />
+                <button id="btnCheckBasic" type="submit" class="px-4 py-2 rounded-lg text-xs font-bold bg-sky-600 hover:bg-sky-500 text-white transition cursor-pointer shrink-0">
+                  정답 확인
+                </button>
+              </form>
+            </div>
+
+            <!-- Problem 2: Advanced (+2 TIME) -->
+            <div id="cardAdv" class="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-3 transition">
+              <div class="flex items-center justify-between gap-2 flex-wrap">
+                <div class="flex items-center gap-2">
+                  <span class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">심화 · +2 TIME</span>
+                  <span id="advTopic" class="text-xs text-slate-400 font-medium"></span>
+                </div>
+                <span id="advStatusBadge" class="text-xs font-semibold text-slate-400">미해결</span>
+              </div>
+              <p id="advQuestion" class="text-sm sm:text-base text-slate-100 leading-relaxed font-medium"></p>
+              <form id="formAdv" class="flex gap-2">
+                <input id="inputAdv" type="text" autocomplete="off" placeholder="정답 입력..." class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500" />
+                <button id="btnCheckAdv" type="submit" class="px-4 py-2 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white transition cursor-pointer shrink-0">
+                  정답 확인
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- PANEL 2: Multi-Activity & Memory Logger + Mempool Queue -->
+          <div id="panelActivity" class="hidden space-y-4">
+            <div>
+              <h2 class="text-base sm:text-lg font-bold text-white">활동 · 추억 · 시간 기록 (Mempool)</h2>
+              <p class="text-xs text-slate-400 mt-0.5">학습시간, 게임시간 사용, 오늘의 추억, 프로젝트를 멤풀에 담아 영구 블록으로 기록합니다.</p>
+            </div>
+
+            <!-- Category Selector -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2" id="activityCategoryBtns">
+              <button type="button" data-act-cat="study" class="rounded-xl px-2.5 py-2 text-xs font-bold border transition cursor-pointer text-center">📚 학습시간</button>
+              <button type="button" data-act-cat="game" class="rounded-xl px-2.5 py-2 text-xs font-bold border transition cursor-pointer text-center">🎮 게임시간</button>
+              <button type="button" data-act-cat="memory" class="rounded-xl px-2.5 py-2 text-xs font-bold border transition cursor-pointer text-center">✨ 활동·추억</button>
+              <button type="button" data-act-cat="project" class="rounded-xl px-2.5 py-2 text-xs font-bold border transition cursor-pointer text-center">💻 프로젝트</button>
+            </div>
+
+            <form id="formActivity" class="space-y-3 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">제목</label>
+                <input id="actTitle" type="text" required placeholder="예: 영어 원서 읽기 / 한강 자전거" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+
+              <div class="grid grid-cols-3 gap-2.5">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-300 mb-1">시간 (분)</label>
+                  <input id="actDuration" type="number" min="0" max="600" value="30" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white font-mono-code" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-300 mb-1">TIME 변동</label>
+                  <input id="actTimeDelta" type="number" min="-20" max="20" value="1" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white font-mono-code" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-300 mb-1">기분</label>
+                  <select id="actMood" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-sm text-white">
+                    <option value="😊">😊 좋음</option>
+                    <option value="🔥">🔥 집중</option>
+                    <option value="🤩">🤩 최고</option>
+                    <option value="😎">😎 뿌듯</option>
+                    <option value="🥳">🥳 신남</option>
+                    <option value="🤔">🤔 고민</option>
+                    <option value="😌">😌 편안</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">내용 / 추억 메모</label>
+                <textarea id="actMemo" rows="2" placeholder="오늘 있었던 일, 배운 점, 소감을 자유롭게 기록해 두세요." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-300 mb-1">태그 (선택)</label>
+                  <input id="actTags" type="text" placeholder="예: #가족 #로봇 #독서" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-300 mb-1">결과물 링크 (선택)</label>
+                  <input id="actLink" type="url" placeholder="https://..." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500" />
+                </div>
+              </div>
+
+              <div class="flex gap-2 pt-1">
+                <button type="submit" class="flex-1 py-2.5 px-3 rounded-xl text-xs font-bold bg-cyan-600 hover:bg-cyan-500 text-white transition cursor-pointer">
+                  + 멤풀(대기열)에 담기
+                </button>
+                <button id="btnActMineNow" type="button" class="flex-1 py-2.5 px-3 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 transition cursor-pointer">
+                  ⛏️ 바로 블록 채굴
+                </button>
+              </div>
+            </form>
+
+            <!-- Queued Mempool Items -->
+            <div class="rounded-xl border border-cyan-500/25 bg-slate-950/70 p-3.5 space-y-2.5">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-cyan-300">⏳ Mempool 채굴 대기열</span>
+                <span id="mempoolQueueSummary" class="text-[11px] font-mono-code text-slate-400">0건 대기</span>
+              </div>
+              <div id="mempoolQueueList" class="space-y-2"></div>
+            </div>
+          </div>
+
+          <!-- Shared PoW Mining Console -->
+          <div id="miningBox" class="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-3">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <i data-lucide="cpu" class="w-4 h-4 text-emerald-400"></i>
+                PoW 채굴 콘솔
+              </span>
+              <span id="miningTierLabel" class="text-xs font-semibold text-slate-400">문제를 풀거나 활동을 담으면 채굴이 열립니다</span>
+            </div>
+
+            <div class="bg-slate-900 rounded-lg p-3 border border-slate-800 font-mono-code text-xs space-y-1.5">
+              <div class="flex justify-between text-slate-400">
+                <span>Nonce:</span>
+                <span id="liveNonce" class="text-emerald-400 font-bold">0</span>
+              </div>
+              <div class="text-slate-400">
+                <span>Candidate Hash:</span>
+                <div id="liveHash" class="text-slate-300 break-all mt-0.5">대기 중...</div>
+              </div>
+            </div>
+
+            <button id="btnMine" type="button" disabled class="w-full py-3 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer bg-slate-800 text-slate-300">
+              <i data-lucide="pickaxe" class="w-4 h-4"></i>
+              <span id="btnMineText">채굴 잠금 (문제를 먼저 풀어주세요)</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Filterable & Searchable Permanent Chronicle Ledger -->
+      <div class="lg:col-span-6 space-y-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 id="chainLedgerTitle" class="text-lg font-bold text-white">신지훈의 영원불변 활동 장부</h2>
+              <p class="text-xs text-slate-400 mt-0.5">카테고리·키워드로 모든 블록 히스토리를 탐색하세요</p>
+            </div>
+            <input id="ledgerSearch" type="search" placeholder="키워드·태그 검색..." class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-40 sm:w-48" />
+          </div>
+
+          <!-- Module Filter Pills -->
+          <div id="ledgerFilterBar" class="flex items-center gap-1.5 flex-wrap">
+            <button type="button" data-filter="all" class="px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer">전체</button>
+            <button type="button" data-filter="math" class="px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer">📐 수학</button>
+            <button type="button" data-filter="study" class="px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer">📚 학습</button>
+            <button type="button" data-filter="game" class="px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer">🎮 게임</button>
+            <button type="button" data-filter="memory" class="px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer">✨ 추억</button>
+            <button type="button" data-filter="project" class="px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer">💻 프로젝트</button>
+          </div>
+
+          <!-- Chain List -->
+          <div id="chainList" class="space-y-3 max-h-[680px] overflow-y-auto pr-1"></div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Modal: Parent PIN -->
+  <div id="modalPin" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-xs w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white">학부모 모드 잠금 해제</h3>
+        <button id="btnClosePin" type="button" class="text-slate-400 hover:text-white p-1 cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <p class="text-xs text-slate-400">문제 출제·백업·복원·온체인 앵커링 도구를 열려면 학부모 PIN을 입력하세요.</p>
+      <form id="formParentPin" class="space-y-3">
+        <input id="inputParentPin" type="password" inputmode="numeric" autocomplete="off" required placeholder="PIN 입력 (기본: 2026)" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white font-mono-code tracking-widest text-center focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        <div class="flex justify-end gap-2">
+          <button id="btnCancelPin" type="button" class="px-3.5 py-2 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 cursor-pointer">취소</button>
+          <button type="submit" class="px-4 py-2 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer">잠금 해제</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Add Problem (Parent) -->
+  <div id="modalAdd" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white">새 문제 세트 출제 (학부모용)</h3>
+        <button id="btnCloseAdd" type="button" class="text-slate-400 hover:text-white p-1 cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <p class="text-xs text-slate-400">입력한 정답은 저장 즉시 SHA-256 해시로 변환되므로 아이들이 소스를 봐도 답을 알 수 없습니다.</p>
+
+      <form id="formAddProblem" class="space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">대상 학생</label>
+            <select id="addStudent" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white">
+              <option value="jihoon">신지훈 (초6)</option>
+              <option value="leehyun">신이현 (초3)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">날짜 / 라벨</label>
+            <input id="addDateLabel" type="text" required placeholder="예: 2026-11-20" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white" />
+          </div>
+        </div>
+
+        <div class="p-3 rounded-xl bg-slate-950/70 border border-slate-800 space-y-2">
+          <div class="text-xs font-bold text-sky-300">1. 기본 문제 (+1 TIME)</div>
+          <input id="addBasicTopic" type="text" required placeholder="영역 (예: 분수의 나눗셈 · 3등급)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white" />
+          <textarea id="addBasicQ" rows="2" required placeholder="기본 문제 내용을 입력하세요" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white"></textarea>
+          <input id="addBasicA" type="text" required placeholder="기본 문제 정답 (숫자 또는 분수)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white" />
+        </div>
+
+        <div class="p-3 rounded-xl bg-slate-950/70 border border-slate-800 space-y-2">
+          <div class="text-xs font-bold text-amber-300">2. 심화 문제 (+2 TIME)</div>
+          <input id="addAdvTopic" type="text" required placeholder="영역 (예: 비례배분 · 4등급)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white" />
+          <textarea id="addAdvQ" rows="2" required placeholder="심화 문제 내용을 입력하세요" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white"></textarea>
+          <input id="addAdvA" type="text" required placeholder="심화 문제 정답 (숫자 또는 분수)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white" />
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button id="btnCancelAdd" type="button" class="px-4 py-2 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 cursor-pointer">취소</button>
+          <button type="submit" class="px-4 py-2 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer">해시 변환 후 저장</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Import JSON Problems -->
+  <div id="modalImport" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-xl w-full p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white">문제 JSON 일괄 가져오기</h3>
+        <button id="btnCloseImport" type="button" class="text-slate-400 hover:text-white p-1 cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <p class="text-xs text-slate-400 leading-relaxed">
+        Gemini Skill 또는 Spark에서 출력한 문제 JSON을 붙여넣으세요. <code class="text-emerald-300">answer</code>(평문)는 저장 즉시 SHA-256 해시로 변환됩니다.
+      </p>
+
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-semibold text-slate-300">JSON 데이터</span>
+        <button id="btnFillSampleJson" type="button" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 cursor-pointer">
+          예시 템플릿 채우기
+        </button>
+      </div>
+
+      <form id="formImportJson" class="space-y-3">
+        <textarea id="importJsonInput" rows="10" required placeholder='{"jihoon": [...], "leehyun": [...]}' class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs font-mono-code text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
+        <div class="flex justify-end gap-2">
+          <button id="btnCancelImport" type="button" class="px-4 py-2 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 cursor-pointer">취소</button>
+          <button type="submit" class="px-4 py-2 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer">검증 후 일괄 등록</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Restore Ledger Backup -->
+  <div id="modalRestore" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white">원장 백업 복원 (암호학 무결성 검증)</h3>
+        <button id="btnCloseRestore" type="button" class="text-slate-400 hover:text-white p-1 cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <p class="text-xs text-slate-400 leading-relaxed">
+        백업해 둔 JSON 원장 파일을 선택하면 Protocol v1 해시 무결성을 전수 검사한 뒤 안전하게 복원합니다.
+      </p>
+      <div class="space-y-3">
+        <input id="restoreFileInput" type="file" accept=".json,application/json" class="block w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer" />
+        <div id="restorePreview" class="hidden rounded-xl bg-slate-950 border border-slate-800 p-3 text-xs text-slate-300 font-mono-code"></div>
+      </div>
+      <div class="flex justify-end gap-2">
+        <button id="btnCancelRestore" type="button" class="px-4 py-2 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 cursor-pointer">취소</button>
+        <button id="btnConfirmRestore" type="button" disabled class="px-4 py-2 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white cursor-pointer disabled:cursor-not-allowed">검증된 원장 복원</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Base On-chain Anchoring -->
+  <div id="modalAnchor" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white">Base L2 온체인 앵커링</h3>
+        <button id="btnCloseAnchor" type="button" class="text-slate-400 hover:text-white p-1 cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div id="anchorSummaryBox" class="rounded-xl bg-slate-950 border border-slate-800 p-3.5 text-xs space-y-2 font-mono-code"></div>
+      <p class="text-xs text-slate-400 leading-relaxed">
+        미앵커링 블록들의 머클 루트를 <code class="text-blue-300">contracts/ShinPoWAnchor.sol</code>에 한 번에 기록하면 Base Mainnet 기준 건당 약 1~3원으로 평생 보존됩니다.
+      </p>
+      <div class="flex justify-end gap-2 flex-wrap">
+        <button id="btnCopyMerkle" type="button" class="px-3.5 py-2 rounded-lg text-xs font-semibold bg-slate-800 text-slate-200 hover:bg-slate-700 cursor-pointer">머클 루트 복사</button>
+        <button id="btnExecuteAnchor" type="button" class="px-4 py-2 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white cursor-pointer disabled:cursor-not-allowed">지갑으로 Base 앵커링 실행</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Reset Confirmation -->
+  <div id="modalReset" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
+      <h3 class="text-base font-bold text-white">체인 데이터를 초기화할까요?</h3>
+      <p class="text-xs text-slate-400 leading-relaxed">지훈이와 이현이의 채굴된 블록, TIME 잔액, 멤풀 대기열, 직접 추가한 문제가 모두 초기 상태(제네시스 블록만 남음)로 돌아갑니다.</p>
+      <div class="flex justify-end gap-2">
+        <button id="btnCancelReset" type="button" class="px-4 py-2 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 cursor-pointer">취소</button>
+        <button id="btnConfirmReset" type="button" class="px-4 py-2 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white cursor-pointer">초기화 실행</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>

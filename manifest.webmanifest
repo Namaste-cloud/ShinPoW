@@ -1,0 +1,21 @@
+{
+  "name": "ShinPoW — 지훈 & 이현 타임 채굴장",
+  "short_name": "ShinPoW",
+  "description": "수학 문제를 풀고 나만의 Proof-of-Work 타임 블록을 채굴하는 독립 블록체인 허브",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#020617",
+  "theme_color": "#0f172a",
+  "lang": "ko",
+  "icons": [
+    {
+      "src": "./assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
+
