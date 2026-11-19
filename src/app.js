@@ -36,6 +36,10 @@ import {
 } from './adapters/storageAdapter.js';
 import { fetchProblemFeed, mergeProblems } from './adapters/feedAdapter.js';
 import { anchorBatchOnchain, getExplorerTxUrl } from './adapters/onchainAdapter.js';
+import {
+  anchorBatchOpenTimestamps,
+  base64ToBytes
+} from './adapters/opentimestampsAdapter.js';
 
 const studentIds = Object.keys(APP_CONFIG.students);
 const storage = new LocalStorageAdapter(APP_CONFIG.storage.localStorageKey);
@@ -55,8 +59,29 @@ const state = {
   isMining: false,
   pendingRestoreBundle: null,
   deferredInstallPrompt: null,
-  currentAnchorMerkle: ''
+  currentAnchorMerkle: '',
+  latestOtsReceipt: null
 };
+
+function isBlockAnchored(block) {
+  return Boolean(block?.onchain && (block.onchain.otsBase64 || block.onchain.txHash));
+}
+
+function downloadOtsProof(receipt, studentId) {
+  if (!receipt || !receipt.otsBase64) return;
+  const bytes = base64ToBytes(receipt.otsBase64);
+  const blob = new Blob([bytes], { type: 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const range = receipt.fromIndex !== undefined ? `b${receipt.fromIndex}-${receipt.toIndex}` : 'proof';
+  a.download = `shinpow-${studentId}-${range}.ots`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  showToast('비트코인 증명 파일(.ots)을 다운로드했습니다.', 'info');
+}
 
 // ---------------------------------------------------------------------------
 // Utility Helpers
@@ -335,7 +360,7 @@ function renderBlockExplorer() {
     const isSelected = block.index === selectedIdx;
     const amt = Number(block.reward?.amount || 0);
     const labelText = block.payload?.label || modMeta.label;
-    const anchored = Boolean(block.onchain && block.onchain.txHash);
+    const anchored = isBlockAnchored(block);
 
     const tile = document.createElement('button');
     tile.type = 'button';
@@ -391,6 +416,12 @@ function renderBlockInspector(block, totalCount) {
   const txUrl = block.onchain?.txHash
     ? getExplorerTxUrl(APP_CONFIG.onchain, block.onchain.txHash, block.onchain.network)
     : null;
+  const hasOts = Boolean(block.onchain?.otsBase64);
+  const anchorPill = hasOts
+    ? `<button id="btnInspDownloadOts" type="button" class="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-amber-100 text-amber-800 hover:bg-amber-200 cursor-pointer">₿ BTC 증명 (.ots)</button>`
+    : txUrl
+      ? `<a href="${escapeHtml(txUrl)}" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-[#E8F3FF] text-[#1B64DA] hover:bg-[#D4E7FF]">⛓️ BaseScan</a>`
+      : '';
 
   let contentHtml = '';
   if (block.module === 'genesis') {
@@ -463,7 +494,7 @@ function renderBlockInspector(block, totalCount) {
         <span class="font-mono-code text-sm font-extrabold text-[#191F28]">Block #${block.index}</span>
         <span class="px-2.5 py-0.5 rounded-lg text-[11px] font-bold ${theme.badgeCls}">${escapeHtml(tierMeta.badge)}</span>
         <span class="text-xs font-medium text-[#6B7684]">${escapeHtml(block.payload?.label || modMeta.label)}</span>
-        ${txUrl ? `<a href="${escapeHtml(txUrl)}" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-[#E8F3FF] text-[#1B64DA] hover:bg-[#D4E7FF]">⛓️ BaseScan</a>` : ''}
+        ${anchorPill}
       </div>
       <div class="flex items-center gap-1.5">
         <button id="btnInspPrev" type="button" ${block.index <= 0 ? 'disabled' : ''} class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-white border border-[#E5E8EB] text-[#333D4B] hover:bg-[#F2F4F6] disabled:opacity-35 cursor-pointer disabled:cursor-not-allowed">← 이전</button>
@@ -499,6 +530,10 @@ function renderBlockInspector(block, totalCount) {
   const btnPrev = document.getElementById('btnInspPrev');
   const btnNext = document.getElementById('btnInspNext');
   const btnJumpPrev = document.getElementById('btnJumpPrevHash');
+  const btnInspOts = document.getElementById('btnInspDownloadOts');
+  if (btnInspOts && block.onchain?.otsBase64) {
+    btnInspOts.addEventListener('click', () => downloadOtsProof(block.onchain, sid));
+  }
   if (btnPrev) {
     btnPrev.addEventListener('click', () => {
       if (block.index > 0) {
@@ -806,6 +841,11 @@ function renderChain() {
     const txUrl = block.onchain?.txHash
       ? getExplorerTxUrl(APP_CONFIG.onchain, block.onchain.txHash, block.onchain.network)
       : null;
+    const cardAnchorBadge = block.onchain?.otsBase64
+      ? `<span class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-amber-100 text-amber-800">₿ BTC 증명</span>`
+      : txUrl
+        ? `<a href="${escapeHtml(txUrl)}" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-[#E8F3FF] text-[#1B64DA]">⛓️ Base</a>`
+        : '';
 
     const card = document.createElement('div');
     card.className = `rounded-2xl border p-4 space-y-2.5 transition cursor-pointer bg-white ${
@@ -816,7 +856,7 @@ function renderChain() {
         <div class="flex items-center gap-2 flex-wrap">
           <span class="font-mono-code text-sm font-extrabold text-[#191F28]">#${block.index}</span>
           <span class="px-2 py-0.5 rounded-lg text-[11px] font-bold ${theme.badgeCls}">${escapeHtml(tierMeta.badge)}${escapeHtml(rewardText)}</span>
-          ${txUrl ? `<a href="${escapeHtml(txUrl)}" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-[#E8F3FF] text-[#1B64DA]">⛓️ Base</a>` : ''}
+          ${cardAnchorBadge}
         </div>
         <span class="text-xs font-medium text-[#6B7684]">${escapeHtml(labelText)}</span>
       </div>
@@ -1059,7 +1099,11 @@ async function openAnchorModal() {
   const sid = state.activeStudent;
   const student = APP_CONFIG.students[sid];
   const chain = state.chains[sid] || [];
-  const unanchored = chain.filter((b) => b.index > 0 && !(b.onchain && b.onchain.txHash));
+  const unanchored = chain.filter((b) => b.index > 0 && !isBlockAnchored(b));
+  const latestAnchored = [...chain].reverse().find((b) => b.onchain?.otsBase64);
+  state.latestOtsReceipt = latestAnchored?.onchain || null;
+
+  const isOts = (APP_CONFIG.onchain.provider || 'opentimestamps') === 'opentimestamps';
   const netInfo = APP_CONFIG.onchain.networks[APP_CONFIG.onchain.network];
 
   const merkleRoot =
@@ -1071,17 +1115,22 @@ async function openAnchorModal() {
   const box = document.getElementById('anchorSummaryBox');
   box.innerHTML = `
     <div class="flex justify-between"><span class="text-[#6B7684]">대상 체인</span><span class="text-[#191F28] font-bold">${escapeHtml(student.name)} (${escapeHtml(student.chainId)})</span></div>
-    <div class="flex justify-between"><span class="text-[#6B7684]">네트워크</span><span class="text-[#1B64DA] font-bold">${escapeHtml(netInfo?.name || APP_CONFIG.onchain.network)}</span></div>
-    <div class="flex justify-between"><span class="text-[#6B7684]">컨트랙트</span><span class="text-[#333D4B]">${escapeHtml(APP_CONFIG.onchain.contractAddress || '미설정 (config.js)')}</span></div>
-    <div class="flex justify-between"><span class="text-[#6B7684]">미앵커링 블록</span><span class="text-amber-700 font-bold">${unanchored.length}개</span></div>
+    <div class="flex justify-between"><span class="text-[#6B7684]">앵커링 네트워크</span><span class="text-amber-700 font-bold">${isOts ? 'Bitcoin Mainnet (OpenTimestamps · 0원)' : escapeHtml(netInfo?.name || APP_CONFIG.onchain.network)}</span></div>
+    <div class="flex justify-between"><span class="text-[#6B7684]">지갑 / 가스비</span><span class="text-emerald-700 font-bold">${isOts ? '불필요 (무료)' : escapeHtml(APP_CONFIG.onchain.contractAddress || '미설정')}</span></div>
+    <div class="flex justify-between"><span class="text-[#6B7684]">미앵커링 블록</span><span class="text-[#1B64DA] font-bold">${unanchored.length}개</span></div>
     <div class="pt-2 border-t border-[#E5E8EB]">
       <div class="text-[#6B7684] mb-1">${unanchored.length > 0 ? '미앵커링 배치 머클 루트' : '전체 체인 머클 루트'}</div>
       <div class="text-emerald-700 font-semibold break-all text-[11px]">${escapeHtml(merkleRoot)}</div>
     </div>
   `;
 
+  const btnDownloadOts = document.getElementById('btnDownloadLatestOts');
+  btnDownloadOts.classList.toggle('hidden', !state.latestOtsReceipt);
+
   const btnExec = document.getElementById('btnExecuteAnchor');
-  btnExec.disabled = !APP_CONFIG.onchain.enabled || !APP_CONFIG.onchain.contractAddress || unanchored.length === 0;
+  btnExec.disabled = isOts
+    ? unanchored.length === 0
+    : !APP_CONFIG.onchain.enabled || !APP_CONFIG.onchain.contractAddress || unanchored.length === 0;
   openModal('modalAnchor');
 }
 
@@ -1369,25 +1418,52 @@ function bindEvents() {
       showToast('클립보드 복사를 지원하지 않는 환경입니다.', 'error');
     }
   });
+  document.getElementById('btnDownloadLatestOts').addEventListener('click', () => {
+    if (state.latestOtsReceipt) {
+      downloadOtsProof(state.latestOtsReceipt, state.activeStudent);
+    }
+  });
   document.getElementById('btnExecuteAnchor').addEventListener('click', async () => {
     const sid = state.activeStudent;
     const student = APP_CONFIG.students[sid];
-    const unanchored = state.chains[sid].filter((b) => b.index > 0 && !(b.onchain && b.onchain.txHash));
+    const unanchored = state.chains[sid].filter((b) => b.index > 0 && !isBlockAnchored(b));
+    const btnExec = document.getElementById('btnExecuteAnchor');
+    const isOts = (APP_CONFIG.onchain.provider || 'opentimestamps') === 'opentimestamps';
+
+    btnExec.disabled = true;
+    const prevText = btnExec.textContent;
+    btnExec.textContent = isOts ? '비트코인 캘린더에 제출 중...' : 'Base 트랜잭션 전송 중...';
+
     try {
-      const receipt = await anchorBatchOnchain({
-        chainId: student.chainId,
-        blocks: unanchored,
-        onchainConfig: APP_CONFIG.onchain
-      });
+      const receipt = isOts
+        ? await anchorBatchOpenTimestamps({
+            chainId: student.chainId,
+            blocks: unanchored,
+            calendars: APP_CONFIG.onchain.opentimestamps?.calendars
+          })
+        : await anchorBatchOnchain({
+            chainId: student.chainId,
+            blocks: unanchored,
+            onchainConfig: APP_CONFIG.onchain
+          });
+
       unanchored.forEach((b) => {
         b.onchain = receipt;
       });
+      state.latestOtsReceipt = receipt.otsBase64 ? receipt : null;
       saveState();
       renderAll();
-      closeModal('modalAnchor');
-      showToast(`Base 온체인 앵커링 전송 완료! (${receipt.txHash.slice(0, 12)}...)`, 'gold');
+      await openAnchorModal();
+      showToast(
+        isOts
+          ? `₿ 비트코인 메인넷 앵커링 완료! (${unanchored.length}블록 · .ots 증명 생성됨)`
+          : `Base 온체인 앵커링 전송 완료! (${receipt.txHash.slice(0, 12)}...)`,
+        'gold'
+      );
     } catch (err) {
       showToast(`온체인 앵커링 실패: ${err.message}`, 'error');
+    } finally {
+      btnExec.textContent = prevText;
     }
   });
 

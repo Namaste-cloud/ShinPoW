@@ -31,6 +31,14 @@ import {
   encodeAnchorBlockCalldata,
   encodeAnchorBatchCalldata
 } from '../src/adapters/onchainAdapter.js';
+import {
+  OTS_HEADER_MAGIC,
+  OTS_VERSION,
+  OTS_OP_SHA256,
+  buildOtsProofBytes,
+  bytesToBase64,
+  base64ToBytes
+} from '../src/adapters/opentimestampsAdapter.js';
 
 test('SHA-256 pure JS fallback matches Web Crypto API', async () => {
   const vectors = ['', 'abc', 'SHINPOW|v1|test', '한글 수학 문제 테스트 123'];
@@ -418,5 +426,28 @@ test('Trustless activities enforce 0 TIME for memory/study/project, -TIME for ga
   assert.equal(stats.moduleCounts.math, 1);
   assert.equal(stats.moduleCounts.memory, 1);
   assert.equal(stats.moduleCounts.game, 1);
+});
+
+test('OpenTimestamps (.ots) binary proof framing & Base64 round-trip', () => {
+  const sampleDigest = 'ab'.repeat(32);
+  const fakeCalendar = new Uint8Array([0xf0, 0x08, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08]);
+  const proof = buildOtsProofBytes(sampleDigest, fakeCalendar);
+
+  assert.equal(proof.length, OTS_HEADER_MAGIC.length + 2 + 32 + fakeCalendar.length);
+  assert.deepEqual(proof.slice(0, OTS_HEADER_MAGIC.length), OTS_HEADER_MAGIC);
+  assert.equal(proof[OTS_HEADER_MAGIC.length], OTS_VERSION);
+  assert.equal(proof[OTS_HEADER_MAGIC.length + 1], OTS_OP_SHA256);
+
+  const b64 = bytesToBase64(proof);
+  const restored = base64ToBytes(b64);
+  assert.deepEqual(restored, proof);
+
+  const chainWithOts = [
+    { index: 0, reward: { amount: 0 }, onchain: null },
+    { index: 1, reward: { amount: 1 }, onchain: { provider: 'opentimestamps', otsBase64: b64 } }
+  ];
+  const stats = summarizeChain(chainWithOts);
+  assert.equal(stats.anchoredCount, 1);
+  assert.equal(stats.unanchoredCount, 0);
 });
 

@@ -99,10 +99,19 @@ export const APP_CONFIG = {
   },
 
   /**
-   * [C] Base L2 온체인 앵커링 설정
-   * - 개발 중엔 'base-sepolia'(무료), 공식 런칭 시 'base-mainnet'(연간 수백 원)으로 전환
+   * [C] 영구 온체인 앵커링 설정
+   * - 기본값: 'opentimestamps' (비트코인 메인넷 · 100% 무료 · 지갑/가스비 불필요)
+   * - 선택 옵션: 'base' (Base Sepolia / Base Mainnet EVM 컨트랙트)
    */
   onchain: {
+    provider: 'opentimestamps', // 'opentimestamps' | 'base'
+    opentimestamps: {
+      calendars: [
+        'https://a.pool.opentimestamps.org/digest',
+        'https://b.pool.opentimestamps.org/digest',
+        'https://alice.btc.calendar.opentimestamps.org/digest'
+      ]
+    },
     enabled: false,
     network: 'base-sepolia', // 'base-sepolia' | 'base-mainnet'
     contractAddress: '',

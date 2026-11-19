@@ -4,7 +4,7 @@
  * - 앱 셸 정적 자산: Stale-While-Revalidate (빠른 실행 + 자동 업데이트)
  */
 
-const CACHE_NAME = 'shinpow-shell-v3';
+const CACHE_NAME = 'shinpow-shell-v4';
 const APP_SHELL = [
   './',
   './index.html',
@@ -19,7 +19,8 @@ const APP_SHELL = [
   './src/modules/activity/activityModule.js',
   './src/adapters/storageAdapter.js',
   './src/adapters/feedAdapter.js',
-  './src/adapters/onchainAdapter.js'
+  './src/adapters/onchainAdapter.js',
+  './src/adapters/opentimestampsAdapter.js'
 ];
 
 self.addEventListener('install', (event) => {

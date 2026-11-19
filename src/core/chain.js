@@ -257,7 +257,7 @@ export function summarizeChain(chain = []) {
     if (b.tier === 'CORE') coreCount += 1;
     if (b.tier === 'BOOST') boostCount += 1;
     if (b.tier === 'MASTER') masterCount += 1;
-    if (b.onchain && b.onchain.txHash) anchoredCount += 1;
+    if (b.onchain && (b.onchain.txHash || b.onchain.otsBase64)) anchoredCount += 1;
     if (b.module && b.module !== 'genesis') {
       moduleCounts[b.module] = (moduleCounts[b.module] || 0) + 1;
     }
