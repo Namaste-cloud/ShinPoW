@@ -1,0 +1,65 @@
+name: Daily Gemini Math Problem Generator
+
+on:
+  schedule:
+    # 매일 한국시간(KST) 오전 07:00 = UTC 22:00 자동 출제
+    - cron: '0 22 * * *'
+  workflow_dispatch:
+    inputs:
+      jihoon_basic_level:
+        description: '신지훈 기본 문제 난이도 (1~5)'
+        required: false
+        default: '3'
+      jihoon_adv_level:
+        description: '신지훈 심화 문제 난이도 (1~5)'
+        required: false
+        default: '4'
+      leehyun_basic_level:
+        description: '신이현 기본 문제 난이도 (1~5)'
+        required: false
+        default: '3'
+      leehyun_adv_level:
+        description: '신이현 심화 문제 난이도 (1~5)'
+        required: false
+        default: '4'
+      topic_hint:
+        description: '원하는 단원/테마 힌트 (선택, 예: 지훈 로보틱스, 이현 천문학)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Generate today's math problems via Gemini API
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          JIHOON_BASIC_LEVEL: ${{ inputs.jihoon_basic_level || '3' }}
+          JIHOON_ADV_LEVEL: ${{ inputs.jihoon_adv_level || '4' }}
+          LEEHYUN_BASIC_LEVEL: ${{ inputs.leehyun_basic_level || '3' }}
+          LEEHYUN_ADV_LEVEL: ${{ inputs.leehyun_adv_level || '4' }}
+          TOPIC_HINT: ${{ inputs.topic_hint || '' }}
+        run: node scripts/generate-daily-problems.mjs
+
+      - name: Verify protocol & hashed problem integrity
+        run: node --test tests/protocol.test.mjs
+
+      - name: Commit and push updated data/problems.json
+        run: |
+          git config user.name "ShinPoW Math Bot"
+          git config user.email "bot@shinpow.local"
+          git add data/problems.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(math): publish daily Gemini math problems"
+            git push
+          else
+            echo "No problem changes to commit."
+          fi

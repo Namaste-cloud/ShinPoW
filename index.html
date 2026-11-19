@@ -297,22 +297,6 @@
               </form>
             </div>
 
-            <!-- Optional OP_RETURN 1-line memory stamped inside the math block -->
-            <div class="rounded-2xl bg-[#F9FAFB] border border-[#E5E8EB] p-3.5 space-y-2">
-              <div class="flex items-center justify-between">
-                <label for="mathNoteInput" class="text-xs font-semibold text-[#4E5968]">오늘의 한 줄 추억 함께 각인하기 <span class="text-[#8B95A1] font-normal">(선택)</span></label>
-                <select id="mathMoodSelect" aria-label="오늘의 기분" class="bg-white border border-[#E5E8EB] rounded-lg px-2 py-1 text-xs text-[#191F28]">
-                  <option value="😊">😊 좋음</option>
-                  <option value="🔥">🔥 집중</option>
-                  <option value="🤩">🤩 최고</option>
-                  <option value="😎">😎 뿌듯</option>
-                  <option value="🥳">🥳 신남</option>
-                  <option value="🤔">🤔 어려웠음</option>
-                </select>
-              </div>
-              <input id="mathNoteInput" type="text" maxlength="120" placeholder="예: 비례배분이 헷갈렸는데 끝까지 혼자 풀었다!" class="w-full bg-white border border-[#E5E8EB] rounded-xl px-3 py-2 text-xs text-[#191F28] placeholder-[#8B95A1] focus:outline-none focus:ring-2 focus:ring-[#3182F6]" />
-            </div>
-
             <!-- PoW Mining Console -->
             <div id="miningBox" class="rounded-2xl border border-[#E5E8EB] bg-white p-4 space-y-3">
               <div class="flex items-center justify-between gap-2">
@@ -441,7 +425,23 @@
           </div>
 
           <!-- Chronicle List -->
-          <div id="chainList" class="clean-scroll space-y-3 max-h-[680px] overflow-y-auto pr-1"></div>
+          <div id="chainList" class="clean-scroll space-y-3 max-h-[600px] overflow-y-auto pr-1"></div>
+
+          <!-- Optional OP_RETURN 1-line memory stamped into the next mined math block -->
+          <div class="rounded-2xl bg-[#F9FAFB] border border-[#E5E8EB] p-3.5 space-y-2">
+            <div class="flex items-center justify-between gap-2">
+              <label for="mathNoteInput" class="text-xs font-semibold text-[#4E5968]">✨ 오늘의 한 줄 추억 함께 각인하기 <span class="text-[#8B95A1] font-normal">(수학 채굴 시 포함 · 선택)</span></label>
+              <select id="mathMoodSelect" aria-label="오늘의 기분" class="bg-white border border-[#E5E8EB] rounded-lg px-2 py-1 text-xs text-[#191F28]">
+                <option value="😊">😊 좋음</option>
+                <option value="🔥">🔥 집중</option>
+                <option value="🤩">🤩 최고</option>
+                <option value="😎">😎 뿌듯</option>
+                <option value="🥳">🥳 신남</option>
+                <option value="🤔">🤔 어려웠음</option>
+              </select>
+            </div>
+            <input id="mathNoteInput" type="text" maxlength="120" placeholder="예: 비례배분이 헷갈렸는데 끝까지 혼자 풀었다!" class="w-full bg-white border border-[#E5E8EB] rounded-xl px-3 py-2 text-xs text-[#191F28] placeholder-[#8B95A1] focus:outline-none focus:ring-2 focus:ring-[#3182F6]" />
+          </div>
         </div>
       </div>
 

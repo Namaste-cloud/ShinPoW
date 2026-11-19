@@ -79,11 +79,19 @@ test('All 12 built-in math problem hashes verify against expected answers', asyn
   }
 });
 
-test('data/problems.json is valid JSON matching DEFAULT_MATH_PROBLEMS', async () => {
+test('data/problems.json is valid JSON with SHA-256 hashed answers only (no plaintext answers)', async () => {
   const raw = await fs.readFile(path.resolve('data/problems.json'), 'utf8');
   const parsed = JSON.parse(raw);
-  assert.equal(parsed.jihoon.length, DEFAULT_MATH_PROBLEMS.jihoon.length);
-  assert.equal(parsed.leehyun.length, DEFAULT_MATH_PROBLEMS.leehyun.length);
+  assert.ok(parsed.jihoon.length >= DEFAULT_MATH_PROBLEMS.jihoon.length);
+  assert.ok(parsed.leehyun.length >= DEFAULT_MATH_PROBLEMS.leehyun.length);
+  for (const sid of ['jihoon', 'leehyun']) {
+    for (const day of parsed[sid]) {
+      for (const part of ['basic', 'adv']) {
+        assert.equal('answer' in day[part], false, `Plaintext answer leaked in ${day.id}.${part}`);
+        assert.match(day[part].answerHash, /^[0-9a-f]{64}$/, `Invalid answerHash in ${day.id}.${part}`);
+      }
+    }
+  }
 });
 
 test('Cumulative TIME rewards: +1 CORE, +2 BOOST, +3 MASTER, and zero double-claiming', async () => {
