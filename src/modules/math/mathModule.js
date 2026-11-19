@@ -105,8 +105,9 @@ export function computePendingMathReward({ solvedDay = {}, minedParts = {}, tier
 
 /**
  * Protocol v1 블록에 들어갈 Math 모듈 페이로드 생성
+ * (선택) 오늘의 한 줄 추억(note)과 기분(mood)을 OP_RETURN처럼 함께 각인합니다.
  */
-export function buildMathBlockPayload({ day, parts }) {
+export function buildMathBlockPayload({ day, parts, note = '', mood = '' }) {
   const proofs = {};
   const topics = {};
   if (parts.includes('basic')) {
@@ -118,13 +119,21 @@ export function buildMathBlockPayload({ day, parts }) {
     topics.adv = day.adv.topic;
   }
 
-  return {
+  const payload = {
     dayId: day.id,
     label: day.label,
     parts: [...parts].sort(),
     topics,
     proofs
   };
+
+  const cleanNote = String(note || '').trim();
+  if (cleanNote) {
+    payload.note = cleanNote;
+    if (mood) payload.mood = String(mood).trim();
+  }
+
+  return payload;
 }
 
 /**

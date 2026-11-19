@@ -1,8 +1,9 @@
 /**
- * ShinPoW Application Controller
+ * ShinPoW Application Controller (Clean Light · Trustless Edition)
  * ---------------------------------------------------------------------------
- * Mempool.space 스타일 블록 익스플로러, 수학 미션, 멀티 액티비티(학습/게임/추억/프로젝트)
- * 멤풀 채굴, 영원불변 활동 장부 검색/필터, PWA 설치/오프라인 동기화를 통합 관리합니다.
+ * - 대기열(Mempool) 없이 수학 문제 정답 확인 -> 즉시 PoW 채굴 (+1/+2/+3 TIME, 선택 한 줄 추억 각인)
+ * - 무승인 자율 기록: 추억·학습·프로젝트(0 TIME) & 게임·자유시간 사용(-TIME) -> 즉시 PoW 채굴
+ * - Toss / Apple Clean Light 톤 + 시각적 블록 타임라인 익스플로러 + 검색 가능한 성장 장부
  */
 
 import { APP_CONFIG } from '../config.js';
@@ -42,14 +43,13 @@ const storage = new LocalStorageAdapter(APP_CONFIG.storage.localStorageKey);
 const state = {
   activeStudent: studentIds[0],
   activePanel: 'math', // 'math' | 'activity'
-  activityCategory: 'study', // 'study' | 'game' | 'memory' | 'project'
-  ledgerFilter: 'all', // 'all' | 'math' | 'study' | 'game' | 'memory' | 'project'
+  activityCategory: 'memory', // 'memory' | 'study' | 'project' | 'game'
+  ledgerFilter: 'all',
   ledgerSearch: '',
   selectedBlockIndex: { jihoon: 0, leehyun: 0 },
   parentUnlocked: false,
   selectedDayIndex: { jihoon: 0, leehyun: 0 },
   solved: { jihoon: {}, leehyun: {} },
-  mempool: { jihoon: [], leehyun: [] },
   problems: structuredClone(DEFAULT_MATH_PROBLEMS),
   chains: { jihoon: [], leehyun: [] },
   isMining: false,
@@ -90,19 +90,19 @@ function isSafeHttpUrl(url) {
 function showToast(message, type = 'info') {
   const container = document.getElementById('toastContainer');
   const colors = {
-    success: 'bg-emerald-950/95 border-emerald-500/50 text-emerald-200',
-    error: 'bg-rose-950/95 border-rose-500/50 text-rose-200',
-    gold: 'bg-amber-950/95 border-amber-400/60 text-amber-200',
-    info: 'bg-slate-900/95 border-slate-700 text-slate-200'
+    success: 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20',
+    error: 'bg-rose-600 text-white shadow-lg shadow-rose-600/20',
+    gold: 'bg-amber-500 text-white shadow-lg shadow-amber-500/25',
+    info: 'bg-[#191F28] text-white shadow-lg shadow-slate-900/15'
   };
   const el = document.createElement('div');
-  el.className = `pointer-events-auto px-4 py-3 rounded-xl border text-xs font-semibold shadow-xl transition-all duration-300 ${colors[type] || colors.info}`;
+  el.className = `pointer-events-auto px-4 py-3 rounded-2xl text-xs font-semibold transition-all duration-300 ${colors[type] || colors.info}`;
   el.textContent = message;
   container.appendChild(el);
   setTimeout(() => {
     el.classList.add('opacity-0', 'translate-y-1');
     setTimeout(() => el.remove(), 300);
-  }, 3400);
+  }, 3200);
 }
 
 function openModal(id) {
@@ -122,7 +122,6 @@ function saveState() {
     protocolVersion: APP_CONFIG.protocol.version,
     selectedDayIndex: state.selectedDayIndex,
     solved: state.solved,
-    mempool: state.mempool,
     problems: state.problems,
     chains: state.chains
   });
@@ -161,7 +160,6 @@ async function loadOrInitState() {
   if (hasValidChains) {
     state.selectedDayIndex = loaded.selectedDayIndex || { jihoon: 0, leehyun: 0 };
     state.solved = loaded.solved || { jihoon: {}, leehyun: {} };
-    state.mempool = loaded.mempool || { jihoon: [], leehyun: [] };
     state.problems = loaded.problems || structuredClone(DEFAULT_MATH_PROBLEMS);
     state.chains = loaded.chains;
     for (const sid of studentIds) {
@@ -170,7 +168,6 @@ async function loadOrInitState() {
   } else {
     state.selectedDayIndex = { jihoon: 0, leehyun: 0 };
     state.solved = { jihoon: {}, leehyun: {} };
-    state.mempool = { jihoon: [], leehyun: [] };
     state.problems = structuredClone(DEFAULT_MATH_PROBLEMS);
     await initFreshChains();
     saveState();
@@ -191,64 +188,57 @@ function getPendingMathForActiveDay(sid) {
 function getBlockTheme(block) {
   if (block.module === 'genesis' || block.tier === 'GENESIS') {
     return {
-      cubeBg: 'from-indigo-700/80 to-slate-900 border-indigo-400/50',
-      badgeCls: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
-      cardBorder: 'border-slate-800 bg-slate-950/70'
+      tileAccent: 'border-t-slate-400 bg-white',
+      badgeCls: 'bg-[#F2F4F6] text-[#4E5968]',
+      amountCls: 'text-[#4E5968]'
     };
   }
   if (block.module === 'math') {
     if (block.tier === 'MASTER') {
       return {
-        cubeBg: 'from-amber-500/85 to-orange-700/85 border-amber-300/70',
-        badgeCls: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
-        cardBorder: 'border-amber-500/35 bg-amber-950/15'
+        tileAccent: 'border-t-amber-500 bg-amber-50/40',
+        badgeCls: 'bg-amber-100 text-amber-800',
+        amountCls: 'text-amber-700'
       };
     }
     if (block.tier === 'BOOST') {
       return {
-        cubeBg: 'from-violet-600/85 to-indigo-800/85 border-violet-300/60',
-        badgeCls: 'bg-violet-500/20 text-violet-300 border-violet-500/40',
-        cardBorder: 'border-violet-500/30 bg-violet-950/15'
+        tileAccent: 'border-t-violet-500 bg-violet-50/35',
+        badgeCls: 'bg-violet-100 text-violet-800',
+        amountCls: 'text-violet-700'
       };
     }
     return {
-      cubeBg: 'from-sky-600/85 to-blue-800/85 border-sky-300/60',
-      badgeCls: 'bg-sky-500/20 text-sky-300 border-sky-500/30',
-      cardBorder: 'border-sky-500/30 bg-sky-950/15'
-    };
-  }
-  if (block.module === 'study') {
-    return {
-      cubeBg: 'from-cyan-600/85 to-sky-900/90 border-cyan-300/60',
-      badgeCls: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/35',
-      cardBorder: 'border-cyan-500/30 bg-cyan-950/15'
+      tileAccent: 'border-t-[#3182F6] bg-[#F5F9FF]',
+      badgeCls: 'bg-[#E8F3FF] text-[#1B64DA]',
+      amountCls: 'text-[#1B64DA]'
     };
   }
   if (block.module === 'game') {
     return {
-      cubeBg: 'from-rose-600/85 to-pink-900/90 border-rose-300/60',
-      badgeCls: 'bg-rose-500/20 text-rose-300 border-rose-500/35',
-      cardBorder: 'border-rose-500/30 bg-rose-950/15'
+      tileAccent: 'border-t-rose-500 bg-rose-50/40',
+      badgeCls: 'bg-rose-100 text-rose-700',
+      amountCls: 'text-rose-600'
     };
   }
   if (block.module === 'memory') {
     return {
-      cubeBg: 'from-emerald-600/85 to-teal-900/90 border-emerald-300/60',
-      badgeCls: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/35',
-      cardBorder: 'border-emerald-500/30 bg-emerald-950/15'
+      tileAccent: 'border-t-emerald-500 bg-emerald-50/40',
+      badgeCls: 'bg-emerald-100 text-emerald-800',
+      amountCls: 'text-emerald-700'
     };
   }
-  if (block.module === 'project') {
+  if (block.module === 'study') {
     return {
-      cubeBg: 'from-purple-600/85 to-fuchsia-900/90 border-purple-300/60',
-      badgeCls: 'bg-purple-500/20 text-purple-300 border-purple-500/35',
-      cardBorder: 'border-purple-500/30 bg-purple-950/15'
+      tileAccent: 'border-t-sky-500 bg-sky-50/40',
+      badgeCls: 'bg-sky-100 text-sky-800',
+      amountCls: 'text-sky-700'
     };
   }
   return {
-    cubeBg: 'from-teal-600/85 to-cyan-900/90 border-teal-300/60',
-    badgeCls: 'bg-teal-500/20 text-teal-300 border-teal-500/35',
-    cardBorder: 'border-teal-500/30 bg-teal-950/15'
+    tileAccent: 'border-t-purple-500 bg-purple-50/35',
+    badgeCls: 'bg-purple-100 text-purple-800',
+    amountCls: 'text-purple-700'
   };
 }
 
@@ -259,11 +249,11 @@ function getBlockTheme(block) {
 function renderHeaderMeta() {
   const modeBadge = document.getElementById('networkModeBadge');
   if (APP_CONFIG.protocol.networkMode === 'official') {
-    modeBadge.textContent = 'OFFICIAL GENESIS';
-    modeBadge.className = 'text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono-code';
+    modeBadge.textContent = 'OFFICIAL';
+    modeBadge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-mono-code';
   } else {
     modeBadge.textContent = 'PREVIEW';
-    modeBadge.className = 'text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 font-mono-code';
+    modeBadge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200/80 font-mono-code';
   }
 
   const parentBar = document.getElementById('parentBar');
@@ -272,11 +262,11 @@ function renderHeaderMeta() {
   if (state.parentUnlocked) {
     parentBar.classList.remove('hidden');
     toggleLabel.textContent = '학부모 잠금';
-    toggleBtn.className = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-500 transition cursor-pointer';
+    toggleBtn.className = 'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#191F28] hover:bg-[#333D4B] text-white transition cursor-pointer';
   } else {
     parentBar.classList.add('hidden');
     toggleLabel.textContent = '학부모 모드';
-    toggleBtn.className = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer';
+    toggleBtn.className = 'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#F2F4F6] hover:bg-[#E5E8EB] text-[#333D4B] transition cursor-pointer';
   }
 }
 
@@ -293,111 +283,51 @@ function renderTabsAndStats() {
   const tabJ = document.getElementById('tabJihoon');
   const tabL = document.getElementById('tabLeehyun');
   if (state.activeStudent === 'jihoon') {
-    tabJ.className = 'flex-1 rounded-xl px-4 py-3 text-left transition cursor-pointer flex items-center justify-between bg-indigo-600 text-white shadow-lg shadow-indigo-600/25';
-    tabL.className = 'flex-1 rounded-xl px-4 py-3 text-left transition cursor-pointer flex items-center justify-between bg-slate-950/60 text-slate-400 hover:text-slate-200';
+    tabJ.className = 'flex-1 rounded-2xl px-4 py-3.5 text-left transition cursor-pointer flex items-center justify-between bg-[#3182F6] text-white shadow-md shadow-blue-500/20';
+    tabL.className = 'flex-1 rounded-2xl px-4 py-3.5 text-left transition cursor-pointer flex items-center justify-between bg-[#F4F6F9] text-[#4E5968] hover:bg-[#E5E8EB]';
   } else {
-    tabL.className = 'flex-1 rounded-xl px-4 py-3 text-left transition cursor-pointer flex items-center justify-between bg-teal-600 text-white shadow-lg shadow-teal-600/25';
-    tabJ.className = 'flex-1 rounded-xl px-4 py-3 text-left transition cursor-pointer flex items-center justify-between bg-slate-950/60 text-slate-400 hover:text-slate-200';
+    tabL.className = 'flex-1 rounded-2xl px-4 py-3.5 text-left transition cursor-pointer flex items-center justify-between bg-[#00A884] text-white shadow-md shadow-emerald-500/20';
+    tabJ.className = 'flex-1 rounded-2xl px-4 py-3.5 text-left transition cursor-pointer flex items-center justify-between bg-[#F4F6F9] text-[#4E5968] hover:bg-[#E5E8EB]';
   }
 
   const sid = state.activeStudent;
   const activeStats = sid === 'jihoon' ? jStats : lStats;
-  const mempoolItems = state.mempool[sid] || [];
-  const { pending } = getPendingMathForActiveDay(sid);
-  const totalPendingCount = mempoolItems.length + (pending.canMine ? 1 : 0);
+  const lifeCount =
+    (activeStats.moduleCounts.memory || 0) +
+    (activeStats.moduleCounts.study || 0) +
+    (activeStats.moduleCounts.project || 0) +
+    (activeStats.moduleCounts.bundle || 0);
 
   document.getElementById('statTime').textContent = activeStats.balanceTime;
   document.getElementById('statUnit').textContent = unit;
   document.getElementById('statTimeBreakdown').textContent = `+${activeStats.earnedTime} 획득 · -${activeStats.spentTime} 사용`;
   document.getElementById('statHeight').textContent = `#${activeStats.height}`;
-  document.getElementById('statBlocksCount').textContent = `(총 ${activeStats.count}개)`;
-  document.getElementById('statMempoolCount').textContent = `멤풀 대기 ${totalPendingCount}건`;
-
+  document.getElementById('statBlocksCount').textContent = `총 ${activeStats.count}개`;
   document.getElementById('statMathCount').textContent = activeStats.moduleCounts.math || 0;
-  document.getElementById('statStudyCount').textContent = (activeStats.moduleCounts.study || 0) + (activeStats.moduleCounts.project || 0);
-  document.getElementById('statMemoryCount').textContent = (activeStats.moduleCounts.memory || 0) + (activeStats.moduleCounts.bundle || 0);
+  document.getElementById('statLifeCount').textContent = lifeCount;
   document.getElementById('statGameCount').textContent = activeStats.moduleCounts.game || 0;
-
   document.getElementById('statDifficulty').textContent = `${APP_CONFIG.protocol.difficultyPrefix}...`;
   document.getElementById('statAnchored').textContent = `앵커 ${activeStats.anchoredCount}`;
 
   const name = APP_CONFIG.students[sid].name;
-  document.getElementById('mempoolExplorerTitle').textContent = `${name} 체인 · Mempool 블록 익스플로러`;
-  document.getElementById('activeStudentTitle').textContent = `${name}의 오늘의 채굴 미션`;
-  document.getElementById('chainLedgerTitle').textContent = `${name}의 영원불변 활동 장부`;
+  document.getElementById('explorerTitle').textContent = `${name}의 블록체인 타임라인`;
+  document.getElementById('activeStudentTitle').textContent = `${name}의 오늘의 미션`;
+  document.getElementById('chainLedgerTitle').textContent = `${name}의 성장 장부`;
 }
 
-function renderMempoolExplorer() {
+function renderBlockExplorer() {
   const sid = state.activeStudent;
   const chain = state.chains[sid] || [];
-  const mempoolItems = state.mempool[sid] || [];
-  const { pending: mathPending } = getPendingMathForActiveDay(sid);
   const unit = APP_CONFIG.rewardUnit;
-
-  const ribbon = document.getElementById('mempoolRibbon');
+  const ribbon = document.getElementById('blockRibbon');
   ribbon.innerHTML = '';
 
-  // 1. Pending Mempool Cube (Left of dashed divider)
-  const pendingCount = mempoolItems.length + (mathPending.canMine ? 1 : 0);
-  const pendingDelta =
-    mempoolItems.reduce((acc, tx) => acc + Number(tx.timeDelta || 0), 0) +
-    (mathPending.canMine ? mathPending.rewardAmount : 0);
-
-  const mempoolCard = document.createElement('button');
-  mempoolCard.type = 'button';
-  mempoolCard.className = `mempool-cube w-32 sm:w-36 shrink-0 rounded-xl border-2 border-dashed p-3 text-left flex flex-col justify-between cursor-pointer ${
-    pendingCount > 0
-      ? 'border-cyan-400/70 bg-gradient-to-br from-cyan-950/90 to-slate-900'
-      : 'border-slate-700 bg-slate-950/70 opacity-75'
-  }`;
-  mempoolCard.innerHTML = `
-    <div class="flex items-center justify-between text-[11px] font-bold">
-      <span class="${pendingCount > 0 ? 'text-cyan-300' : 'text-slate-400'}">MEMPOOL</span>
-      <span>⏳</span>
-    </div>
-    <div class="my-2">
-      <div class="text-sm font-extrabold font-mono-code ${pendingCount > 0 ? 'text-white' : 'text-slate-500'}">${pendingCount}건 대기</div>
-      <div class="text-[11px] font-mono-code ${pendingDelta > 0 ? 'text-amber-300' : pendingDelta < 0 ? 'text-rose-300' : 'text-slate-400'}">
-        ${pendingCount > 0 ? formatTimeDelta(pendingDelta, unit) : '대기 항목 없음'}
-      </div>
-    </div>
-    <div class="text-[10px] text-slate-400 truncate">
-      ${pendingCount > 0 ? '클릭해 채굴 콘솔로 이동' : '활동·문제를 추가해 보세요'}
-    </div>
-  `;
-  mempoolCard.addEventListener('click', () => {
-    if (mempoolItems.length > 0 && !mathPending.canMine) {
-      state.activePanel = 'activity';
-      renderWorkspaceMode();
-    } else if (mathPending.canMine) {
-      state.activePanel = 'math';
-      renderWorkspaceMode();
-    } else {
-      state.activePanel = 'activity';
-      renderWorkspaceMode();
-    }
-    document.getElementById('miningBox').scrollIntoView({ behavior: 'smooth', block: 'center' });
-  });
-  ribbon.appendChild(mempoolCard);
-
-  // Dashed Vertical Divider (Mempool | Confirmed Chain)
-  const divider = document.createElement('div');
-  divider.className = 'flex flex-col items-center justify-center shrink-0 px-1 select-none';
-  divider.innerHTML = `
-    <div class="h-full border-l-2 border-dashed border-amber-500/40 relative flex items-center">
-      <span class="bg-slate-900 text-[9px] font-mono-code text-amber-300/90 px-1 py-0.5 rounded border border-amber-500/30 -ml-5 whitespace-nowrap">확정 ▶</span>
-    </div>
-  `;
-  ribbon.appendChild(divider);
-
-  // Clamp selected block index
   const maxIdx = Math.max(0, chain.length - 1);
   if (state.selectedBlockIndex[sid] === undefined || state.selectedBlockIndex[sid] > maxIdx) {
     state.selectedBlockIndex[sid] = maxIdx;
   }
   const selectedIdx = state.selectedBlockIndex[sid];
 
-  // 2. Confirmed Block Cubes (Newest -> Genesis)
   const reversed = [...chain].reverse();
   reversed.forEach((block, pos) => {
     const modMeta = APP_CONFIG.modules[block.module] || { icon: '🧱', label: block.module };
@@ -407,43 +337,43 @@ function renderMempoolExplorer() {
     const labelText = block.payload?.label || modMeta.label;
     const anchored = Boolean(block.onchain && block.onchain.txHash);
 
-    const cube = document.createElement('button');
-    cube.type = 'button';
-    cube.className = `mempool-cube w-32 sm:w-36 shrink-0 rounded-xl border bg-gradient-to-br p-3 text-left flex flex-col justify-between cursor-pointer ${theme.cubeBg} ${
-      isSelected ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-900' : ''
+    const tile = document.createElement('button');
+    tile.type = 'button';
+    tile.className = `block-tile w-36 shrink-0 rounded-2xl border border-[#E5E8EB] border-t-4 p-3.5 text-left flex flex-col justify-between cursor-pointer ${theme.tileAccent} ${
+      isSelected ? 'ring-2 ring-[#3182F6] ring-offset-2 ring-offset-white shadow-md' : ''
     }`;
-    cube.innerHTML = `
-      <div class="flex items-center justify-between text-xs font-extrabold text-white">
+    tile.innerHTML = `
+      <div class="flex items-center justify-between text-xs font-bold text-[#4E5968]">
         <span class="font-mono-code">#${block.index}</span>
         <span>${escapeHtml(modMeta.icon)}${anchored ? ' ⛓️' : ''}</span>
       </div>
-      <div class="my-1.5">
-        <div class="text-sm font-extrabold font-mono-code text-white">
+      <div class="my-2">
+        <div class="text-[13px] font-extrabold font-mono-code ${theme.amountCls}">
           ${block.module === 'genesis' ? 'GENESIS' : amt === 0 ? '기록 저장' : formatTimeDelta(amt, block.reward?.unit || unit)}
         </div>
-        <div class="text-[11px] text-white/85 truncate mt-0.5">${escapeHtml(labelText)}</div>
+        <div class="text-xs font-semibold text-[#191F28] truncate mt-0.5">${escapeHtml(labelText)}</div>
       </div>
-      <div class="flex items-center justify-between text-[10px] font-mono-code text-white/70">
-        <span>${escapeHtml(block.hash.slice(0, 8))}…</span>
+      <div class="flex items-center justify-between text-[10px] font-mono-code text-[#8B95A1]">
+        <span>${escapeHtml(block.hash.slice(0, 7))}…</span>
         <span>${escapeHtml(block.timestamp.slice(5, 10))}</span>
       </div>
     `;
-    cube.addEventListener('click', () => {
+    tile.addEventListener('click', () => {
       state.selectedBlockIndex[sid] = block.index;
-      renderMempoolExplorer();
+      renderBlockExplorer();
+      renderChain();
     });
-    ribbon.appendChild(cube);
+    ribbon.appendChild(tile);
 
     if (pos < reversed.length - 1) {
       const linkArrow = document.createElement('div');
-      linkArrow.className = 'flex items-center text-slate-600 text-xs font-mono-code shrink-0 select-none';
+      linkArrow.className = 'flex items-center text-[#B0B8C1] text-xs font-mono-code shrink-0 select-none';
       linkArrow.textContent = '→';
       linkArrow.title = 'prevHash 암호학적 연결';
       ribbon.appendChild(linkArrow);
     }
   });
 
-  // 3. Render Selected Block Deep Inspector
   renderBlockInspector(chain[selectedIdx], chain.length);
 }
 
@@ -462,13 +392,12 @@ function renderBlockInspector(block, totalCount) {
     ? getExplorerTxUrl(APP_CONFIG.onchain, block.onchain.txHash, block.onchain.network)
     : null;
 
-  // Build Human-Readable Activity / Transaction View inside the block
   let contentHtml = '';
   if (block.module === 'genesis') {
     contentHtml = `
-      <div class="rounded-lg bg-indigo-950/35 border border-indigo-500/30 p-3 text-xs space-y-1">
-        <div class="font-bold text-indigo-200">🌱 ${escapeHtml(block.payload?.note || 'Genesis Block')}</div>
-        <div class="text-slate-400">소유자: <span class="text-slate-200">${escapeHtml(block.payload?.studentName || sid)}</span> · 모드: <span class="font-mono-code text-amber-300">${escapeHtml(block.payload?.networkMode || 'preview')}</span></div>
+      <div class="rounded-xl bg-white border border-[#E5E8EB] p-3.5 text-xs space-y-1">
+        <div class="font-bold text-[#191F28]">🌱 ${escapeHtml(block.payload?.note || 'Genesis Block')}</div>
+        <div class="text-[#6B7684]">소유자: <span class="font-semibold text-[#333D4B]">${escapeHtml(block.payload?.studentName || sid)}</span> · 모드: <span class="font-mono-code font-semibold text-amber-700">${escapeHtml(block.payload?.networkMode || 'preview')}</span></div>
       </div>
     `;
   } else if (block.module === 'math') {
@@ -479,42 +408,47 @@ function renderBlockInspector(block, totalCount) {
         const topic = block.payload?.topics?.[part] || (isBasic ? '기본 문제' : '심화 문제');
         const proof = block.payload?.proofs?.[part] || '';
         return `
-          <div class="rounded-lg bg-slate-900/90 border border-slate-800 p-2.5 flex items-center justify-between gap-2">
-            <div>
-              <span class="text-[11px] font-bold ${isBasic ? 'text-sky-300' : 'text-amber-300'}">${isBasic ? '기본 (+1 TIME)' : '심화 (+2 TIME)'}</span>
-              <span class="text-xs text-slate-200 ml-2">${escapeHtml(topic)}</span>
+          <div class="rounded-xl bg-white border border-[#E5E8EB] p-3 flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded-md text-[11px] font-bold ${isBasic ? 'bg-[#E8F3FF] text-[#1B64DA]' : 'bg-amber-100 text-amber-800'}">${isBasic ? '기본 +1 TIME' : '심화 +2 TIME'}</span>
+              <span class="text-xs font-semibold text-[#191F28]">${escapeHtml(topic)}</span>
             </div>
-            <span class="text-[10px] font-mono-code text-slate-500 truncate max-w-[140px]" title="${escapeHtml(proof)}">Proof ${escapeHtml(proof.slice(0, 10))}…</span>
+            <span class="text-[10px] font-mono-code text-[#8B95A1] truncate max-w-[130px]" title="${escapeHtml(proof)}">Proof ${escapeHtml(proof.slice(0, 10))}…</span>
           </div>
         `;
       })
       .join('');
-    contentHtml = `<div class="space-y-2">${cards}</div>`;
+    const noteHtml = block.payload?.note
+      ? `<div class="rounded-xl bg-amber-50/70 border border-amber-200/70 px-3.5 py-2.5 text-xs text-[#333D4B]">
+           <span class="font-bold text-amber-800 mr-1.5">${escapeHtml(block.payload.mood || '✨')} 한 줄 추억:</span>${escapeHtml(block.payload.note)}
+         </div>`
+      : '';
+    contentHtml = `<div class="space-y-2">${cards}${noteHtml}</div>`;
   } else if (Array.isArray(block.payload?.activities)) {
     const actCards = block.payload.activities
       .map((act) => {
         const catMeta = APP_CONFIG.modules[act.category] || { icon: '✨', label: act.category };
         const tagsHtml = (act.tags || [])
-          .map((t) => `<span class="px-1.5 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300">#${escapeHtml(t)}</span>`)
+          .map((t) => `<span class="px-2 py-0.5 rounded-md bg-[#F2F4F6] text-[11px] font-medium text-[#4E5968]">#${escapeHtml(t)}</span>`)
           .join(' ');
         const linkHtml =
           act.link && isSafeHttpUrl(act.link)
-            ? `<a href="${escapeHtml(act.link)}" target="_blank" rel="noopener noreferrer" class="text-[11px] text-indigo-300 hover:underline break-all">🔗 ${escapeHtml(act.link)}</a>`
+            ? `<a href="${escapeHtml(act.link)}" target="_blank" rel="noopener noreferrer" class="text-xs text-[#3182F6] hover:underline break-all">🔗 ${escapeHtml(act.link)}</a>`
             : '';
         return `
-          <div class="rounded-lg bg-slate-900/90 border border-slate-800 p-3 space-y-1.5">
+          <div class="rounded-xl bg-white border border-[#E5E8EB] p-3.5 space-y-2">
             <div class="flex items-center justify-between gap-2 flex-wrap">
-              <div class="flex items-center gap-1.5">
-                <span>${escapeHtml(act.mood || catMeta.icon)}</span>
-                <span class="text-xs font-bold text-white">${escapeHtml(act.title)}</span>
-                <span class="px-1.5 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400">${escapeHtml(catMeta.label)}</span>
+              <div class="flex items-center gap-2">
+                <span class="text-base">${escapeHtml(act.mood || catMeta.icon)}</span>
+                <span class="text-sm font-bold text-[#191F28]">${escapeHtml(act.title)}</span>
+                <span class="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-[#F2F4F6] text-[#4E5968]">${escapeHtml(catMeta.label)}</span>
               </div>
-              <div class="flex items-center gap-2 text-[11px] font-mono-code">
-                ${act.durationMinutes ? `<span class="text-slate-400">${act.durationMinutes}분</span>` : ''}
-                <span class="${act.timeDelta > 0 ? 'text-amber-300' : act.timeDelta < 0 ? 'text-rose-300' : 'text-emerald-300'} font-bold">${escapeHtml(formatTimeDelta(act.timeDelta))}</span>
+              <div class="flex items-center gap-2 text-xs font-mono-code">
+                ${act.durationMinutes ? `<span class="text-[#6B7684]">${act.durationMinutes}분</span>` : ''}
+                <span class="font-bold ${act.timeDelta < 0 ? 'text-rose-600' : 'text-emerald-700'}">${act.timeDelta === 0 ? '자유 기록' : escapeHtml(formatTimeDelta(act.timeDelta))}</span>
               </div>
             </div>
-            ${act.memo ? `<p class="text-xs text-slate-300 leading-relaxed whitespace-pre-line">${escapeHtml(act.memo)}</p>` : ''}
+            ${act.memo ? `<p class="text-[13px] text-[#333D4B] leading-relaxed whitespace-pre-line">${escapeHtml(act.memo)}</p>` : ''}
             ${tagsHtml || linkHtml ? `<div class="flex items-center gap-2 flex-wrap pt-0.5">${tagsHtml}${linkHtml}</div>` : ''}
           </div>
         `;
@@ -524,45 +458,41 @@ function renderBlockInspector(block, totalCount) {
   }
 
   container.innerHTML = `
-    <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-800/80">
+    <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-[#E5E8EB]">
       <div class="flex items-center gap-2 flex-wrap">
-        <span class="font-mono-code text-sm font-extrabold text-white">Block #${block.index}</span>
-        <span class="px-2 py-0.5 rounded-md text-[11px] font-bold border ${theme.badgeCls}">${escapeHtml(tierMeta.badge)}</span>
-        <span class="text-xs text-slate-400">${escapeHtml(modMeta.icon)} ${escapeHtml(block.payload?.label || modMeta.label)}</span>
-        ${txUrl ? `<a href="${escapeHtml(txUrl)}" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40 hover:bg-blue-500/30">⛓️ BaseScan</a>` : ''}
+        <span class="font-mono-code text-sm font-extrabold text-[#191F28]">Block #${block.index}</span>
+        <span class="px-2.5 py-0.5 rounded-lg text-[11px] font-bold ${theme.badgeCls}">${escapeHtml(tierMeta.badge)}</span>
+        <span class="text-xs font-medium text-[#6B7684]">${escapeHtml(block.payload?.label || modMeta.label)}</span>
+        ${txUrl ? `<a href="${escapeHtml(txUrl)}" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-[#E8F3FF] text-[#1B64DA] hover:bg-[#D4E7FF]">⛓️ BaseScan</a>` : ''}
       </div>
       <div class="flex items-center gap-1.5">
-        <button id="btnInspPrev" type="button" ${block.index <= 0 ? 'disabled' : ''} class="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-slate-900 border border-slate-700 text-slate-200 hover:bg-slate-800 disabled:opacity-35 cursor-pointer disabled:cursor-not-allowed">← 이전 (#${Math.max(0, block.index - 1)})</button>
-        <button id="btnInspNext" type="button" ${block.index >= totalCount - 1 ? 'disabled' : ''} class="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-slate-900 border border-slate-700 text-slate-200 hover:bg-slate-800 disabled:opacity-35 cursor-pointer disabled:cursor-not-allowed">다음 (#${Math.min(totalCount - 1, block.index + 1)}) →</button>
+        <button id="btnInspPrev" type="button" ${block.index <= 0 ? 'disabled' : ''} class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-white border border-[#E5E8EB] text-[#333D4B] hover:bg-[#F2F4F6] disabled:opacity-35 cursor-pointer disabled:cursor-not-allowed">← 이전</button>
+        <button id="btnInspNext" type="button" ${block.index >= totalCount - 1 ? 'disabled' : ''} class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-white border border-[#E5E8EB] text-[#333D4B] hover:bg-[#F2F4F6] disabled:opacity-35 cursor-pointer disabled:cursor-not-allowed">다음 →</button>
       </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px] font-mono-code">
-      <div class="rounded-lg bg-slate-900/70 border border-slate-800/80 p-2.5 space-y-1">
-        <div class="text-slate-500">Block Hash: <span class="text-emerald-400 break-all">${escapeHtml(block.hash)}</span></div>
-        <div class="text-slate-500">Prev Hash: ${
+    <div class="space-y-2">${contentHtml}</div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5 text-[11px] font-mono-code">
+      <div class="rounded-xl bg-white border border-[#E5E8EB] p-3 space-y-1">
+        <div class="text-[#8B95A1]">Hash: <span class="text-emerald-700 font-semibold break-all">${escapeHtml(block.hash)}</span></div>
+        <div class="text-[#8B95A1]">Prev: ${
           block.index > 0
-            ? `<button id="btnJumpPrevHash" type="button" class="text-indigo-300 hover:underline break-all text-left cursor-pointer">${escapeHtml(block.prevHash)}</button>`
-            : `<span class="text-slate-400 break-all">${escapeHtml(block.prevHash)}</span>`
+            ? `<button id="btnJumpPrevHash" type="button" class="text-[#3182F6] hover:underline break-all text-left cursor-pointer">${escapeHtml(block.prevHash)}</button>`
+            : `<span class="text-[#6B7684] break-all">${escapeHtml(block.prevHash)}</span>`
         }</div>
-        <div class="text-slate-500">Payload Hash: <span class="text-amber-300/90 break-all">${escapeHtml(block.payloadHash)}</span></div>
       </div>
-      <div class="rounded-lg bg-slate-900/70 border border-slate-800/80 p-2.5 grid grid-cols-2 gap-2">
-        <div><span class="text-slate-500 block">기록 시각</span><span class="text-slate-200">${escapeHtml(block.timestamp.replace('T', ' ').slice(0, 19))}</span></div>
-        <div><span class="text-slate-500 block">PoW Nonce</span><span class="text-emerald-400 font-bold">${block.nonce}</span></div>
-        <div><span class="text-slate-500 block">TIME 변동</span><span class="text-amber-300 font-bold">${escapeHtml(formatTimeDelta(block.reward?.amount, block.reward?.unit))}</span></div>
-        <div><span class="text-slate-500 block">모듈 / 난이도</span><span class="text-slate-200">${escapeHtml(block.module)} (${escapeHtml(block.difficulty)})</span></div>
+      <div class="rounded-xl bg-white border border-[#E5E8EB] p-3 grid grid-cols-2 gap-2">
+        <div><span class="text-[#8B95A1] block text-[10px]">기록 시각</span><span class="text-[#191F28] font-medium">${escapeHtml(block.timestamp.replace('T', ' ').slice(0, 19))}</span></div>
+        <div><span class="text-[#8B95A1] block text-[10px]">PoW Nonce</span><span class="text-emerald-700 font-bold">${block.nonce}</span></div>
+        <div><span class="text-[#8B95A1] block text-[10px]">TIME 변동</span><span class="font-bold ${theme.amountCls}">${escapeHtml(formatTimeDelta(block.reward?.amount, block.reward?.unit))}</span></div>
+        <div><span class="text-[#8B95A1] block text-[10px]">모듈 / 난이도</span><span class="text-[#191F28]">${escapeHtml(block.module)} (${escapeHtml(block.difficulty)})</span></div>
       </div>
-    </div>
-
-    <div class="space-y-1.5">
-      <div class="text-xs font-bold text-slate-300">기록된 활동 / 트랜잭션 내역</div>
-      ${contentHtml}
     </div>
 
     <details class="text-[11px] font-mono-code">
-      <summary class="text-slate-500 hover:text-slate-300 cursor-pointer select-none">Protocol v1 원시 JSON 보기</summary>
-      <pre class="mt-2 p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 overflow-x-auto text-[10px]">${escapeHtml(JSON.stringify(block, null, 2))}</pre>
+      <summary class="text-[#8B95A1] hover:text-[#333D4B] cursor-pointer select-none">Protocol v1 원시 JSON 보기</summary>
+      <pre class="mt-2 p-3 rounded-xl bg-white border border-[#E5E8EB] text-[#4E5968] overflow-x-auto text-[10px]">${escapeHtml(JSON.stringify(block, null, 2))}</pre>
     </details>
   `;
 
@@ -573,7 +503,8 @@ function renderBlockInspector(block, totalCount) {
     btnPrev.addEventListener('click', () => {
       if (block.index > 0) {
         state.selectedBlockIndex[sid] = block.index - 1;
-        renderMempoolExplorer();
+        renderBlockExplorer();
+        renderChain();
       }
     });
   }
@@ -581,14 +512,16 @@ function renderBlockInspector(block, totalCount) {
     btnNext.addEventListener('click', () => {
       if (block.index < totalCount - 1) {
         state.selectedBlockIndex[sid] = block.index + 1;
-        renderMempoolExplorer();
+        renderBlockExplorer();
+        renderChain();
       }
     });
   }
   if (btnJumpPrev) {
     btnJumpPrev.addEventListener('click', () => {
       state.selectedBlockIndex[sid] = block.index - 1;
-      renderMempoolExplorer();
+      renderBlockExplorer();
+      renderChain();
     });
   }
 }
@@ -601,25 +534,14 @@ function renderWorkspaceMode() {
   const tabMath = document.getElementById('modeTabMath');
   const tabAct = document.getElementById('modeTabActivity');
   if (isMath) {
-    tabMath.className = 'py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 bg-indigo-600 text-white shadow';
-    tabAct.className = 'py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 text-slate-400 hover:text-slate-200';
+    tabMath.className = 'py-2.5 px-3 rounded-xl text-[13px] font-bold transition cursor-pointer flex items-center justify-center gap-1.5 bg-white text-[#191F28] shadow-xs';
+    tabAct.className = 'py-2.5 px-3 rounded-xl text-[13px] font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 text-[#6B7684] hover:text-[#191F28]';
   } else {
-    tabAct.className = 'py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 bg-emerald-600 text-white shadow';
-    tabMath.className = 'py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 text-slate-400 hover:text-slate-200';
-  }
-
-  const mempoolLen = (state.mempool[state.activeStudent] || []).length;
-  const badge = document.getElementById('activityMempoolBadge');
-  if (mempoolLen > 0) {
-    badge.textContent = String(mempoolLen);
-    badge.classList.remove('hidden');
-  } else {
-    badge.classList.add('hidden');
+    tabAct.className = 'py-2.5 px-3 rounded-xl text-[13px] font-bold transition cursor-pointer flex items-center justify-center gap-1.5 bg-white text-[#191F28] shadow-xs';
+    tabMath.className = 'py-2.5 px-3 rounded-xl text-[13px] font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 text-[#6B7684] hover:text-[#191F28]';
   }
 
   renderActivityCategoryUI();
-  renderMempoolQueue();
-  renderMiningConsole();
 }
 
 function renderActivityCategoryUI() {
@@ -627,55 +549,34 @@ function renderActivityCategoryUI() {
   document.querySelectorAll('#activityCategoryBtns [data-act-cat]').forEach((btn) => {
     const c = btn.getAttribute('data-act-cat');
     if (c === cat) {
-      btn.className = 'rounded-xl px-2.5 py-2 text-xs font-bold border transition cursor-pointer text-center bg-indigo-600/30 border-indigo-400 text-white';
+      btn.className = 'rounded-xl px-2.5 py-2.5 text-xs font-bold border transition cursor-pointer text-center bg-[#191F28] border-[#191F28] text-white shadow-xs';
     } else {
-      btn.className = 'rounded-xl px-2.5 py-2 text-xs font-bold border transition cursor-pointer text-center bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200';
+      btn.className = 'rounded-xl px-2.5 py-2.5 text-xs font-semibold border transition cursor-pointer text-center bg-white border-[#E5E8EB] text-[#4E5968] hover:bg-[#F2F4F6]';
     }
   });
+
   const def = ACTIVITY_DEFAULTS[cat];
+  const notice = document.getElementById('actRuleNotice');
+  const spendWrap = document.getElementById('actSpendWrap');
+  const mineLabel = document.getElementById('btnActMineLabel');
+
   if (def) {
     document.getElementById('actTitle').placeholder = def.placeholderTitle;
     document.getElementById('actMemo').placeholder = def.placeholderMemo;
   }
-}
 
-function renderMempoolQueue() {
-  const sid = state.activeStudent;
-  const queue = state.mempool[sid] || [];
-  const summary = document.getElementById('mempoolQueueSummary');
-  const list = document.getElementById('mempoolQueueList');
-
-  const netDelta = queue.reduce((acc, tx) => acc + Number(tx.timeDelta || 0), 0);
-  summary.textContent = `${queue.length}건 대기 (${formatTimeDelta(netDelta)})`;
-
-  if (queue.length === 0) {
-    list.innerHTML = '<div class="text-xs text-slate-500 text-center py-3">아직 대기 중인 활동이 없습니다. 위에서 학습·게임시간·추억을 담아 보세요!</div>';
-    return;
+  if (cat === 'game') {
+    const stats = summarizeChain(state.chains[state.activeStudent]);
+    spendWrap.classList.remove('hidden');
+    notice.className = 'rounded-xl px-3.5 py-2.5 text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200/80';
+    notice.textContent = `🎮 게임·자유시간 사용은 보유 잔액(현재 ${stats.balanceTime} TIME)에서 스스로 차감하여 기록합니다.`;
+    mineLabel.textContent = 'TIME 사용하고 블록으로 기록하기';
+  } else {
+    spendWrap.classList.add('hidden');
+    notice.className = 'rounded-xl px-3.5 py-2.5 text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200/80';
+    notice.textContent = `✨ ${def.label}은 0 TIME 자유 기록입니다. 부모 승인 없이 언제든 내 체인에 영구 보존할 수 있어요.`;
+    mineLabel.textContent = '바로 블록으로 영구 기록하기';
   }
-
-  list.innerHTML = '';
-  queue.forEach((tx, idx) => {
-    const catMeta = APP_CONFIG.modules[tx.category] || { icon: '✨', label: tx.category };
-    const row = document.createElement('div');
-    row.className = 'rounded-lg bg-slate-900 border border-slate-800 px-3 py-2 flex items-center justify-between gap-2';
-    row.innerHTML = `
-      <div class="min-w-0">
-        <div class="text-xs font-bold text-white truncate">${escapeHtml(tx.mood || catMeta.icon)} ${escapeHtml(tx.title)}</div>
-        <div class="text-[11px] text-slate-400 truncate">${escapeHtml(catMeta.label)}${tx.durationMinutes ? ` · ${tx.durationMinutes}분` : ''} · <span class="font-mono-code ${tx.timeDelta > 0 ? 'text-amber-300' : tx.timeDelta < 0 ? 'text-rose-300' : 'text-emerald-300'}">${escapeHtml(formatTimeDelta(tx.timeDelta))}</span></div>
-      </div>
-      <button type="button" data-remove-tx="${idx}" class="text-slate-500 hover:text-rose-400 text-xs px-1.5 py-1 cursor-pointer" title="대기열에서 제거">✕</button>
-    `;
-    list.appendChild(row);
-  });
-
-  list.querySelectorAll('[data-remove-tx]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const idx = Number(btn.getAttribute('data-remove-tx'));
-      state.mempool[sid].splice(idx, 1);
-      saveState();
-      renderAll();
-    });
-  });
 }
 
 function renderProblems() {
@@ -691,9 +592,9 @@ function renderProblems() {
     opt.value = String(idx);
     const mined = getMinedPartsForDay(state.chains[sid], p.id);
     let tag = '';
-    if (mined.allMined) tag = ' 👑 3T';
-    else if (mined.advMined) tag = ' ⚡ 2T';
-    else if (mined.basicMined) tag = ' ⏱️ 1T';
+    if (mined.allMined) tag = ' · 완료(3T)';
+    else if (mined.advMined) tag = ' · 심화완료(2T)';
+    else if (mined.basicMined) tag = ' · 기본완료(1T)';
     opt.textContent = `${p.label}${tag}`;
     if (idx === dayIdx) opt.selected = true;
     select.appendChild(opt);
@@ -706,7 +607,7 @@ function renderProblems() {
   const mined = getMinedPartsForDay(state.chains[sid], day.id);
   const unit = APP_CONFIG.rewardUnit;
 
-  // Basic Problem Card
+  // Basic
   document.getElementById('basicTopic').textContent = day.basic.topic;
   document.getElementById('basicQuestion').textContent = day.basic.question;
   const inputBasic = document.getElementById('inputBasic');
@@ -716,31 +617,31 @@ function renderProblems() {
 
   if (mined.basicMined) {
     badgeBasic.textContent = `채굴 완료 ✓ (+${APP_CONFIG.tiers.CORE.reward} ${unit})`;
-    badgeBasic.className = 'text-xs font-bold text-emerald-400';
-    cardBasic.className = 'rounded-xl border border-emerald-500/40 bg-emerald-950/20 p-4 space-y-3 transition';
+    badgeBasic.className = 'text-xs font-bold text-emerald-600';
+    cardBasic.className = 'rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4 space-y-3 transition';
     inputBasic.disabled = true;
     inputBasic.value = '블록 기록 완료';
     btnBasic.disabled = true;
-    btnBasic.className = 'px-4 py-2 rounded-lg text-xs font-bold bg-emerald-700/50 text-emerald-200 cursor-not-allowed shrink-0';
+    btnBasic.className = 'px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-100 text-emerald-700 cursor-not-allowed shrink-0';
   } else if (solvedDay.basic) {
-    badgeBasic.textContent = '정답 완료 · 채굴 대기 ✓';
-    badgeBasic.className = 'text-xs font-bold text-sky-300';
-    cardBasic.className = 'rounded-xl border border-sky-500/40 bg-sky-950/20 p-4 space-y-3 transition';
+    badgeBasic.textContent = '정답 완료 · 채굴 가능 ✓';
+    badgeBasic.className = 'text-xs font-bold text-[#1B64DA]';
+    cardBasic.className = 'rounded-2xl border border-blue-200 bg-[#F5F9FF] p-4 space-y-3 transition';
     inputBasic.disabled = true;
     inputBasic.value = '해시 검증 완료';
     btnBasic.disabled = true;
-    btnBasic.className = 'px-4 py-2 rounded-lg text-xs font-bold bg-sky-700/50 text-sky-200 cursor-not-allowed shrink-0';
+    btnBasic.className = 'px-4 py-2.5 rounded-xl text-xs font-bold bg-[#E8F3FF] text-[#1B64DA] cursor-not-allowed shrink-0';
   } else {
     badgeBasic.textContent = '미해결';
-    badgeBasic.className = 'text-xs font-semibold text-slate-400';
-    cardBasic.className = 'rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-3 transition';
+    badgeBasic.className = 'text-xs font-medium text-[#8B95A1]';
+    cardBasic.className = 'rounded-2xl border border-[#E5E8EB] bg-[#F9FAFB] p-4 space-y-3 transition';
     inputBasic.disabled = false;
     inputBasic.value = '';
     btnBasic.disabled = false;
-    btnBasic.className = 'px-4 py-2 rounded-lg text-xs font-bold bg-sky-600 hover:bg-sky-500 text-white transition cursor-pointer shrink-0';
+    btnBasic.className = 'px-4 py-2.5 rounded-xl text-xs font-bold bg-[#3182F6] hover:bg-[#1B64DA] text-white transition cursor-pointer shrink-0';
   }
 
-  // Advanced Problem Card
+  // Advanced
   document.getElementById('advTopic').textContent = day.adv.topic;
   document.getElementById('advQuestion').textContent = day.adv.question;
   const inputAdv = document.getElementById('inputAdv');
@@ -750,28 +651,28 @@ function renderProblems() {
 
   if (mined.advMined) {
     badgeAdv.textContent = `채굴 완료 ✓ (+${APP_CONFIG.tiers.BOOST.reward} ${unit})`;
-    badgeAdv.className = 'text-xs font-bold text-amber-300';
-    cardAdv.className = 'rounded-xl border border-amber-500/40 bg-amber-950/20 p-4 space-y-3 transition';
+    badgeAdv.className = 'text-xs font-bold text-emerald-600';
+    cardAdv.className = 'rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4 space-y-3 transition';
     inputAdv.disabled = true;
     inputAdv.value = '블록 기록 완료';
     btnAdv.disabled = true;
-    btnAdv.className = 'px-4 py-2 rounded-lg text-xs font-bold bg-amber-700/50 text-amber-200 cursor-not-allowed shrink-0';
+    btnAdv.className = 'px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-100 text-emerald-700 cursor-not-allowed shrink-0';
   } else if (solvedDay.adv) {
-    badgeAdv.textContent = '정답 완료 · 채굴 대기 ✓';
-    badgeAdv.className = 'text-xs font-bold text-amber-300';
-    cardAdv.className = 'rounded-xl border border-amber-500/40 bg-amber-950/20 p-4 space-y-3 transition';
+    badgeAdv.textContent = '정답 완료 · 채굴 가능 ✓';
+    badgeAdv.className = 'text-xs font-bold text-amber-700';
+    cardAdv.className = 'rounded-2xl border border-amber-200 bg-amber-50/40 p-4 space-y-3 transition';
     inputAdv.disabled = true;
     inputAdv.value = '해시 검증 완료';
     btnAdv.disabled = true;
-    btnAdv.className = 'px-4 py-2 rounded-lg text-xs font-bold bg-amber-700/50 text-amber-200 cursor-not-allowed shrink-0';
+    btnAdv.className = 'px-4 py-2.5 rounded-xl text-xs font-bold bg-amber-100 text-amber-800 cursor-not-allowed shrink-0';
   } else {
     badgeAdv.textContent = '미해결';
-    badgeAdv.className = 'text-xs font-semibold text-slate-400';
-    cardAdv.className = 'rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-3 transition';
+    badgeAdv.className = 'text-xs font-medium text-[#8B95A1]';
+    cardAdv.className = 'rounded-2xl border border-[#E5E8EB] bg-[#F9FAFB] p-4 space-y-3 transition';
     inputAdv.disabled = false;
     inputAdv.value = '';
     btnAdv.disabled = false;
-    btnAdv.className = 'px-4 py-2 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white transition cursor-pointer shrink-0';
+    btnAdv.className = 'px-4 py-2.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white transition cursor-pointer shrink-0';
   }
 
   renderMiningConsole();
@@ -786,68 +687,48 @@ function renderMiningConsole() {
   const miningBox = document.getElementById('miningBox');
   miningBox.classList.remove('mining-glow');
 
-  if (state.activePanel === 'activity') {
-    const queue = state.mempool[sid] || [];
-    if (queue.length > 0) {
-      const netDelta = queue.reduce((acc, tx) => acc + Number(tx.timeDelta || 0), 0);
-      btnMine.disabled = state.isMining;
-      btnMine.className = 'w-full py-3 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 cursor-pointer bg-gradient-to-r from-cyan-400 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 text-slate-950 shadow-lg shadow-cyan-500/20';
-      btnMineText.textContent = `📦 멤풀 활동 ${queue.length}건 블록 채굴 시작 (${formatTimeDelta(netDelta, unit)})`;
-      tierLabel.textContent = '멤풀 대기열을 영구 블록으로 확정합니다';
-      tierLabel.className = 'text-xs font-bold text-cyan-300';
-    } else {
-      btnMine.disabled = true;
-      btnMine.className = 'w-full py-3 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 bg-slate-800 text-slate-400 cursor-not-allowed';
-      btnMineText.textContent = '멤풀이 비어 있습니다 (활동을 먼저 담아주세요)';
-      tierLabel.textContent = '활동·추억·시간을 멤풀에 담아주세요';
-      tierLabel.className = 'text-xs font-semibold text-slate-400';
-    }
-    return;
-  }
-
-  // Math mode mining button
   const { mined, pending } = getPendingMathForActiveDay(sid);
   if (mined.allMined) {
     btnMine.disabled = true;
-    btnMine.className = 'w-full py-3 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 bg-amber-500/20 text-amber-300 border border-amber-500/30 cursor-not-allowed';
-    btnMineText.textContent = `이 날짜 올클리어 완료! (+${APP_CONFIG.tiers.MASTER.reward} ${unit} 달성) 👑`;
-    tierLabel.textContent = '오늘의 최대 TIME 획득 완료';
-    tierLabel.className = 'text-xs font-bold text-amber-300';
+    btnMine.className = 'w-full py-3.5 rounded-2xl font-bold text-sm transition flex items-center justify-center gap-2 bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-not-allowed';
+    btnMineText.textContent = `오늘 미션 올클리어 완료! (+${APP_CONFIG.tiers.MASTER.reward} ${unit})`;
+    tierLabel.textContent = '최고 보상 달성 👑';
+    tierLabel.className = 'text-xs font-bold text-emerald-700';
   } else if (pending.canMine) {
     const tierMeta = APP_CONFIG.tiers[pending.tier];
     btnMine.disabled = state.isMining;
     if (pending.tier === 'MASTER') {
-      btnMine.className = 'w-full py-3 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 cursor-pointer bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 shadow-lg shadow-amber-500/25';
-      tierLabel.textContent = '기본+심화 모두 해결! 최고 보상';
-      tierLabel.className = 'text-xs font-bold text-amber-300';
+      btnMine.className = 'w-full py-3.5 rounded-2xl font-bold text-sm transition flex items-center justify-center gap-2 cursor-pointer bg-amber-500 hover:bg-amber-600 text-white shadow-md shadow-amber-500/20';
+      tierLabel.textContent = '기본+심화 모두 정답! 최고 보상';
+      tierLabel.className = 'text-xs font-bold text-amber-700';
     } else if (pending.tier === 'BOOST') {
-      btnMine.className = 'w-full py-3 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 cursor-pointer bg-gradient-to-r from-violet-400 to-amber-400 hover:from-violet-300 hover:to-amber-300 text-slate-950 shadow-lg shadow-violet-500/20';
-      tierLabel.textContent = mined.basicMined ? '심화까지 해결! 추가 +2 TIME 채굴 가능' : '심화 해결! 기본도 풀면 한 번에 +3 TIME';
-      tierLabel.className = 'text-xs font-bold text-violet-300';
+      btnMine.className = 'w-full py-3.5 rounded-2xl font-bold text-sm transition flex items-center justify-center gap-2 cursor-pointer bg-violet-600 hover:bg-violet-700 text-white shadow-md shadow-violet-500/20';
+      tierLabel.textContent = mined.basicMined ? '심화까지 해결! 추가 +2 TIME' : '심화 정답! 기본도 풀면 한 번에 +3 TIME';
+      tierLabel.className = 'text-xs font-bold text-violet-700';
     } else {
-      btnMine.className = 'w-full py-3 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 cursor-pointer bg-gradient-to-r from-sky-300 to-cyan-400 hover:from-sky-200 hover:to-cyan-300 text-slate-950 shadow-lg';
-      tierLabel.textContent = mined.advMined ? '기본까지 해결! 추가 +1 TIME 채굴 가능' : '기본 해결! 심화도 풀면 한 번에 +3 TIME';
-      tierLabel.className = 'text-xs font-semibold text-sky-300';
+      btnMine.className = 'w-full py-3.5 rounded-2xl font-bold text-sm transition flex items-center justify-center gap-2 cursor-pointer bg-[#3182F6] hover:bg-[#1B64DA] text-white shadow-md shadow-blue-500/20';
+      tierLabel.textContent = mined.advMined ? '기본까지 해결! 추가 +1 TIME' : '기본 정답! 심화도 풀면 한 번에 +3 TIME';
+      tierLabel.className = 'text-xs font-bold text-[#1B64DA]';
     }
-    btnMineText.textContent = `${tierMeta.badge} 블록 채굴 시작 (+${pending.rewardAmount} ${unit})`;
+    btnMineText.textContent = `${tierMeta.label} 블록 채굴하기 (+${pending.rewardAmount} ${unit})`;
   } else if (mined.basicMined) {
     btnMine.disabled = true;
-    btnMine.className = 'w-full py-3 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 bg-slate-800 text-slate-300 cursor-not-allowed';
-    btnMineText.textContent = `기본 채굴 완료 — 심화 풀면 +${APP_CONFIG.tiers.BOOST.reward} ${unit} 추가!`;
-    tierLabel.textContent = '심화 문제 도전 대기 중';
-    tierLabel.className = 'text-xs font-semibold text-slate-300';
+    btnMine.className = 'w-full py-3.5 rounded-2xl font-bold text-sm transition flex items-center justify-center gap-2 bg-[#F2F4F6] text-[#6B7684] cursor-not-allowed';
+    btnMineText.textContent = `기본 채굴 완료 · 심화 풀면 +${APP_CONFIG.tiers.BOOST.reward} ${unit} 추가`;
+    tierLabel.textContent = '심화 문제 도전 대기';
+    tierLabel.className = 'text-xs font-medium text-[#6B7684]';
   } else if (mined.advMined) {
     btnMine.disabled = true;
-    btnMine.className = 'w-full py-3 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 bg-slate-800 text-slate-300 cursor-not-allowed';
-    btnMineText.textContent = `심화 채굴 완료 — 기본 풀면 +${APP_CONFIG.tiers.CORE.reward} ${unit} 추가!`;
-    tierLabel.textContent = '기본 문제 도전 대기 중';
-    tierLabel.className = 'text-xs font-semibold text-slate-300';
+    btnMine.className = 'w-full py-3.5 rounded-2xl font-bold text-sm transition flex items-center justify-center gap-2 bg-[#F2F4F6] text-[#6B7684] cursor-not-allowed';
+    btnMineText.textContent = `심화 채굴 완료 · 기본 풀면 +${APP_CONFIG.tiers.CORE.reward} ${unit} 추가`;
+    tierLabel.textContent = '기본 문제 도전 대기';
+    tierLabel.className = 'text-xs font-medium text-[#6B7684]';
   } else {
     btnMine.disabled = true;
-    btnMine.className = 'w-full py-3 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 bg-slate-800 text-slate-400 cursor-not-allowed';
-    btnMineText.textContent = '채굴 잠금 (기본 또는 심화 문제 풀이 필요)';
-    tierLabel.textContent = '문제를 풀면 채굴이 열립니다';
-    tierLabel.className = 'text-xs font-semibold text-slate-400';
+    btnMine.className = 'w-full py-3.5 rounded-2xl font-bold text-sm transition flex items-center justify-center gap-2 bg-[#F2F4F6] text-[#8B95A1] cursor-not-allowed';
+    btnMineText.textContent = '문제를 풀면 채굴할 수 있어요';
+    tierLabel.textContent = '문제를 풀면 채굴이 열려요';
+    tierLabel.className = 'text-xs font-medium text-[#8B95A1]';
   }
 }
 
@@ -877,13 +758,12 @@ function renderChain() {
   const container = document.getElementById('chainList');
   container.innerHTML = '';
 
-  // Render filter pills active styling
   document.querySelectorAll('#ledgerFilterBar [data-filter]').forEach((btn) => {
     const f = btn.getAttribute('data-filter');
     if (f === state.ledgerFilter) {
-      btn.className = 'px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer bg-indigo-600 text-white';
+      btn.className = 'px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer bg-[#191F28] text-white';
     } else {
-      btn.className = 'px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer bg-slate-950 border border-slate-800 text-slate-400 hover:text-slate-200';
+      btn.className = 'px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer bg-[#F2F4F6] text-[#4E5968] hover:bg-[#E5E8EB]';
     }
   });
 
@@ -891,7 +771,7 @@ function renderChain() {
   const filtered = [...chain].reverse().filter((b) => blockMatchesFilter(b, state.ledgerFilter, query));
 
   if (filtered.length === 0) {
-    container.innerHTML = '<div class="text-xs text-slate-500 text-center py-8">조건에 일치하는 블록 기록이 없습니다.</div>';
+    container.innerHTML = '<div class="text-xs text-[#8B95A1] text-center py-10">조건에 일치하는 블록 기록이 없습니다.</div>';
     return;
   }
 
@@ -900,30 +780,27 @@ function renderChain() {
     const modMeta = APP_CONFIG.modules[block.module] || { icon: '🧱', label: block.module };
     const theme = getBlockTheme(block);
     const amt = Number(block.reward?.amount || 0);
-    const rewardText = block.module === 'genesis' ? '' : ` ${formatTimeDelta(amt, block.reward?.unit)}`;
-    const diffLen = block.tier === 'GENESIS' ? 0 : block.difficulty?.length || 2;
-    const highlightedHash =
-      block.tier === 'GENESIS'
-        ? `<span class="text-indigo-300">${escapeHtml(block.hash)}</span>`
-        : `<span class="text-emerald-400 font-bold">${escapeHtml(block.hash.slice(0, diffLen))}</span><span class="text-slate-300">${escapeHtml(block.hash.slice(diffLen))}</span>`;
-
+    const rewardText = block.module === 'genesis' ? '' : amt === 0 ? '' : ` ${formatTimeDelta(amt, block.reward?.unit)}`;
     const isSelected = state.selectedBlockIndex[sid] === block.index;
     const labelText = block.payload?.label || modMeta.label;
 
-    // Activity snippet preview inside card
     let snippetHtml = '';
     if (Array.isArray(block.payload?.activities) && block.payload.activities.length > 0) {
       const first = block.payload.activities[0];
-      const extra = block.payload.activities.length > 1 ? ` 외 ${block.payload.activities.length - 1}건` : '';
       snippetHtml = `
-        <div class="text-xs text-slate-300 bg-slate-900/70 rounded-lg px-2.5 py-2 border border-slate-800/70">
-          <div class="font-semibold text-white">${escapeHtml(first.mood || modMeta.icon)} ${escapeHtml(first.title)}${escapeHtml(extra)}</div>
-          ${first.memo ? `<div class="text-[11px] text-slate-400 line-clamp-2 mt-0.5">${escapeHtml(first.memo)}</div>` : ''}
+        <div class="text-xs text-[#333D4B] bg-[#F9FAFB] rounded-xl px-3 py-2.5 border border-[#E5E8EB]">
+          <div class="font-bold text-[#191F28]">${escapeHtml(first.mood || modMeta.icon)} ${escapeHtml(first.title)}</div>
+          ${first.memo ? `<div class="text-xs text-[#6B7684] mt-1 leading-relaxed">${escapeHtml(first.memo)}</div>` : ''}
         </div>
       `;
-    } else if (block.module === 'math' && block.payload?.topics) {
-      const topicSummary = Object.values(block.payload.topics).join(' · ');
-      snippetHtml = `<div class="text-[11px] text-slate-300">📐 ${escapeHtml(topicSummary)}</div>`;
+    } else if (block.module === 'math') {
+      const topicSummary = block.payload?.topics ? Object.values(block.payload.topics).join(' · ') : '';
+      const noteLine = block.payload?.note
+        ? `<div class="text-xs text-[#4E5968] mt-1">${escapeHtml(block.payload.mood || '✨')} ${escapeHtml(block.payload.note)}</div>`
+        : '';
+      snippetHtml = `<div class="text-xs text-[#4E5968] bg-[#F9FAFB] rounded-xl px-3 py-2 border border-[#E5E8EB]">
+        <div class="font-medium">📐 ${escapeHtml(topicSummary)}</div>${noteLine}
+      </div>`;
     }
 
     const txUrl = block.onchain?.txHash
@@ -931,32 +808,28 @@ function renderChain() {
       : null;
 
     const card = document.createElement('div');
-    card.className = `rounded-xl border p-3.5 space-y-2 transition cursor-pointer ${theme.cardBorder} ${
-      isSelected ? 'ring-1 ring-indigo-400/70' : 'hover:border-slate-600'
+    card.className = `rounded-2xl border p-4 space-y-2.5 transition cursor-pointer bg-white ${
+      isSelected ? 'border-[#3182F6] ring-1 ring-[#3182F6]/30 shadow-sm' : 'border-[#E5E8EB] hover:border-[#CBD5E1]'
     }`;
     card.innerHTML = `
       <div class="flex items-center justify-between gap-2 flex-wrap">
         <div class="flex items-center gap-2 flex-wrap">
-          <span class="font-mono-code text-sm font-extrabold text-white">Block #${block.index}</span>
-          <span class="px-2 py-0.5 rounded-md text-[11px] font-bold border ${theme.badgeCls}">${escapeHtml(tierMeta.badge)}${escapeHtml(rewardText)}</span>
-          ${txUrl ? `<a href="${escapeHtml(txUrl)}" target="_blank" rel="noopener noreferrer" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40">⛓️ Base</a>` : ''}
+          <span class="font-mono-code text-sm font-extrabold text-[#191F28]">#${block.index}</span>
+          <span class="px-2 py-0.5 rounded-lg text-[11px] font-bold ${theme.badgeCls}">${escapeHtml(tierMeta.badge)}${escapeHtml(rewardText)}</span>
+          ${txUrl ? `<a href="${escapeHtml(txUrl)}" target="_blank" rel="noopener noreferrer" class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-[#E8F3FF] text-[#1B64DA]">⛓️ Base</a>` : ''}
         </div>
-        <span class="text-[11px] text-slate-400">${escapeHtml(labelText)}</span>
+        <span class="text-xs font-medium text-[#6B7684]">${escapeHtml(labelText)}</span>
       </div>
       ${snippetHtml}
-      <div class="grid grid-cols-2 gap-2 text-[11px] text-slate-400">
-        <div class="truncate">시간: <span class="text-slate-300">${escapeHtml(block.timestamp.replace('T', ' ').slice(0, 19))}</span></div>
-        <div class="text-right">Nonce: <span class="font-mono-code text-emerald-400 font-semibold">${block.nonce}</span></div>
-      </div>
-      <div class="bg-slate-950/90 rounded-lg p-2 border border-slate-800/80 font-mono-code text-[10px] space-y-0.5">
-        <div class="truncate text-slate-500">Prev: <span class="text-slate-400">${escapeHtml(block.prevHash)}</span></div>
-        <div class="truncate text-slate-500">Hash: ${highlightedHash}</div>
+      <div class="flex items-center justify-between text-[11px] text-[#8B95A1] font-mono-code">
+        <span>${escapeHtml(block.timestamp.replace('T', ' ').slice(0, 16))}</span>
+        <span>Hash ${escapeHtml(block.hash.slice(0, 12))}… · Nonce ${block.nonce}</span>
       </div>
     `;
     card.addEventListener('click', (e) => {
       if (e.target.closest('a')) return;
       state.selectedBlockIndex[sid] = block.index;
-      renderMempoolExplorer();
+      renderBlockExplorer();
       renderChain();
       document.getElementById('blockInspector').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
@@ -967,7 +840,7 @@ function renderChain() {
 function renderAll() {
   renderHeaderMeta();
   renderTabsAndStats();
-  renderMempoolExplorer();
+  renderBlockExplorer();
   renderWorkspaceMode();
   renderProblems();
   renderChain();
@@ -977,7 +850,7 @@ function renderAll() {
 }
 
 // ---------------------------------------------------------------------------
-// Core Interactions & PoW Mining
+// Core Interactions & Immediate PoW Mining
 // ---------------------------------------------------------------------------
 
 async function handleCheckAnswer(kind) {
@@ -1007,12 +880,12 @@ async function handleCheckAnswer(kind) {
     const rewardVal = kind === 'basic' ? APP_CONFIG.tiers.CORE.reward : APP_CONFIG.tiers.BOOST.reward;
     showToast(
       kind === 'basic'
-        ? `기본 문제 정답! (+${rewardVal} ${APP_CONFIG.rewardUnit} 채굴 가능 ⏱️)`
-        : `심화 문제 정답! (+${rewardVal} ${APP_CONFIG.rewardUnit} 채굴 가능 ⚡)`,
+        ? `정답이에요! 기본 +${rewardVal} ${APP_CONFIG.rewardUnit} 바로 채굴할 수 있어요`
+        : `정답이에요! 심화 +${rewardVal} ${APP_CONFIG.rewardUnit} 바로 채굴할 수 있어요`,
       'success'
     );
   } else {
-    showToast('아쉽네요! 다시 한 번 계산해 볼까요?', 'error');
+    showToast('아쉽네요! 한 번 더 차근차근 계산해 볼까요?', 'error');
     inputEl.focus();
   }
 }
@@ -1041,7 +914,7 @@ async function runPowMining({ sid, module, tier, rewardAmount, payload, onSucces
       reward: { amount: rewardAmount, unit: APP_CONFIG.rewardUnit },
       payload,
       difficulty: APP_CONFIG.protocol.difficultyPrefix,
-      minVisualMs: 650,
+      minVisualMs: 550,
       onProgress: ({ nonce, hash }) => {
         liveNonceEl.textContent = String(nonce);
         liveHashEl.textContent = hash;
@@ -1055,19 +928,17 @@ async function runPowMining({ sid, module, tier, rewardAmount, payload, onSucces
     saveState();
     renderAll();
 
-    if (globalThis.confetti) {
+    if (globalThis.confetti && rewardAmount >= 0) {
       globalThis.confetti({
-        particleCount: tier === 'MASTER' ? 110 : rewardAmount > 0 ? 75 : 45,
-        spread: 72,
+        particleCount: tier === 'MASTER' ? 100 : rewardAmount > 0 ? 65 : 35,
+        spread: 68,
         origin: { y: 0.65 }
       });
     }
 
     const tierMeta = APP_CONFIG.tiers[tier] || { label: tier };
-    showToast(
-      `Block #${newBlock.index} ${tierMeta.label} 채굴 완료! (${formatTimeDelta(rewardAmount)})`,
-      tier === 'MASTER' ? 'gold' : 'success'
-    );
+    const deltaLabel = rewardAmount === 0 ? '영구 기록 완료' : formatTimeDelta(rewardAmount);
+    showToast(`Block #${newBlock.index} ${tierMeta.label} 완료! (${deltaLabel})`, tier === 'MASTER' ? 'gold' : 'success');
   } catch (err) {
     state.isMining = false;
     renderMiningConsole();
@@ -1075,14 +946,54 @@ async function runPowMining({ sid, module, tier, rewardAmount, payload, onSucces
   }
 }
 
-async function handleMine() {
+async function handleMathMine() {
+  if (state.isMining) return;
+  const sid = state.activeStudent;
+  const { day, pending } = getPendingMathForActiveDay(sid);
+  if (!day || !pending.canMine) return;
+
+  const noteInput = document.getElementById('mathNoteInput');
+  const moodSelect = document.getElementById('mathMoodSelect');
+  const payload = buildMathBlockPayload({
+    day,
+    parts: pending.parts,
+    note: noteInput.value,
+    mood: moodSelect.value
+  });
+
+  await runPowMining({
+    sid,
+    module: MATH_MODULE_ID,
+    tier: pending.tier,
+    rewardAmount: pending.rewardAmount,
+    payload,
+    onSuccess: () => {
+      noteInput.value = '';
+    }
+  });
+}
+
+async function handleActivityMine(e) {
+  e.preventDefault();
   if (state.isMining) return;
   const sid = state.activeStudent;
 
-  if (state.activePanel === 'activity') {
-    const queue = state.mempool[sid] || [];
-    if (queue.length === 0) return;
-    const spec = buildActivityBlockSpec(queue);
+  try {
+    const tx = createActivityTx({
+      category: state.activityCategory,
+      title: document.getElementById('actTitle').value,
+      memo: document.getElementById('actMemo').value,
+      durationMinutes: document.getElementById('actDuration').value,
+      spendTime: document.getElementById('actSpendTime').value,
+      mood: document.getElementById('actMood').value,
+      tags: document.getElementById('actTags').value,
+      link: document.getElementById('actLink').value
+    });
+
+    const spec = buildActivityBlockSpec(tx);
+    const btnAct = document.getElementById('btnActMineNow');
+    btnAct.disabled = true;
+
     await runPowMining({
       sid,
       module: spec.module,
@@ -1090,45 +1001,17 @@ async function handleMine() {
       rewardAmount: spec.rewardAmount,
       payload: spec.payload,
       onSuccess: () => {
-        state.mempool[sid] = [];
+        document.getElementById('actTitle').value = '';
+        document.getElementById('actMemo').value = '';
+        document.getElementById('actTags').value = '';
+        document.getElementById('actLink').value = '';
       }
     });
-    return;
+
+    btnAct.disabled = false;
+  } catch (err) {
+    showToast(err.message, 'error');
   }
-
-  // Math mode mining
-  const { day, pending } = getPendingMathForActiveDay(sid);
-  if (!day || !pending.canMine) return;
-  const payload = buildMathBlockPayload({ day, parts: pending.parts });
-  await runPowMining({
-    sid,
-    module: MATH_MODULE_ID,
-    tier: pending.tier,
-    rewardAmount: pending.rewardAmount,
-    payload
-  });
-}
-
-function readActivityFormTx() {
-  return createActivityTx({
-    category: state.activityCategory,
-    title: document.getElementById('actTitle').value,
-    memo: document.getElementById('actMemo').value,
-    durationMinutes: document.getElementById('actDuration').value,
-    timeDelta: document.getElementById('actTimeDelta').value,
-    mood: document.getElementById('actMood').value,
-    tags: document.getElementById('actTags').value,
-    link: document.getElementById('actLink').value
-  });
-}
-
-function resetActivityForm() {
-  document.getElementById('actTitle').value = '';
-  document.getElementById('actMemo').value = '';
-  document.getElementById('actTags').value = '';
-  document.getElementById('actLink').value = '';
-  const def = ACTIVITY_DEFAULTS[state.activityCategory];
-  document.getElementById('actTimeDelta').value = String(def?.defaultTimeDelta ?? 0);
 }
 
 async function handleVerifyChain() {
@@ -1139,13 +1022,13 @@ async function handleVerifyChain() {
   banner.classList.remove('hidden');
 
   if (result.valid) {
-    banner.className = 'rounded-xl px-3.5 py-2.5 text-xs font-semibold space-y-1 bg-emerald-950/60 border border-emerald-500/40 text-emerald-300';
+    banner.className = 'rounded-2xl px-4 py-3 text-xs font-semibold space-y-1 bg-emerald-50 border border-emerald-200 text-emerald-800';
     banner.innerHTML = `
-      <div>✓ 검증 완료: 제네시스(#0)부터 최신 블록(#${result.height})까지 모든 헤더·활동 페이로드 해시가 무결합니다.</div>
-      <div class="font-mono-code text-[10px] text-emerald-400/80 break-all">Merkle Root: ${escapeHtml(result.merkleRoot)}</div>
+      <div>✓ 검증 완료: 제네시스(#0)부터 최신 블록(#${result.height})까지 모든 해시와 활동 기록이 변조 없이 무결합니다.</div>
+      <div class="font-mono-code text-[10px] text-emerald-700/80 break-all">Merkle Root: ${escapeHtml(result.merkleRoot)}</div>
     `;
   } else {
-    banner.className = 'rounded-xl px-3.5 py-2.5 text-xs font-semibold space-y-1 bg-rose-950/60 border border-rose-500/40 text-rose-300';
+    banner.className = 'rounded-2xl px-4 py-3 text-xs font-semibold space-y-1 bg-rose-50 border border-rose-200 text-rose-700';
     banner.textContent = `⚠ 무결성 오류: ${result.reason}`;
   }
 }
@@ -1187,13 +1070,13 @@ async function openAnchorModal() {
 
   const box = document.getElementById('anchorSummaryBox');
   box.innerHTML = `
-    <div class="flex justify-between"><span class="text-slate-400">대상 체인:</span><span class="text-white">${escapeHtml(student.name)} (${escapeHtml(student.chainId)})</span></div>
-    <div class="flex justify-between"><span class="text-slate-400">네트워크:</span><span class="text-blue-300">${escapeHtml(netInfo?.name || APP_CONFIG.onchain.network)}</span></div>
-    <div class="flex justify-between"><span class="text-slate-400">컨트랙트:</span><span class="text-slate-300">${escapeHtml(APP_CONFIG.onchain.contractAddress || '미설정 (config.js)')}</span></div>
-    <div class="flex justify-between"><span class="text-slate-400">미앵커링 블록:</span><span class="text-amber-300">${unanchored.length}개</span></div>
-    <div class="pt-1 border-t border-slate-800">
-      <div class="text-slate-400 mb-1">${unanchored.length > 0 ? '미앵커링 배치 머클 루트:' : '전체 체인 머클 루트:'}</div>
-      <div class="text-emerald-300 break-all text-[11px]">${escapeHtml(merkleRoot)}</div>
+    <div class="flex justify-between"><span class="text-[#6B7684]">대상 체인</span><span class="text-[#191F28] font-bold">${escapeHtml(student.name)} (${escapeHtml(student.chainId)})</span></div>
+    <div class="flex justify-between"><span class="text-[#6B7684]">네트워크</span><span class="text-[#1B64DA] font-bold">${escapeHtml(netInfo?.name || APP_CONFIG.onchain.network)}</span></div>
+    <div class="flex justify-between"><span class="text-[#6B7684]">컨트랙트</span><span class="text-[#333D4B]">${escapeHtml(APP_CONFIG.onchain.contractAddress || '미설정 (config.js)')}</span></div>
+    <div class="flex justify-between"><span class="text-[#6B7684]">미앵커링 블록</span><span class="text-amber-700 font-bold">${unanchored.length}개</span></div>
+    <div class="pt-2 border-t border-[#E5E8EB]">
+      <div class="text-[#6B7684] mb-1">${unanchored.length > 0 ? '미앵커링 배치 머클 루트' : '전체 체인 머클 루트'}</div>
+      <div class="text-emerald-700 font-semibold break-all text-[11px]">${escapeHtml(merkleRoot)}</div>
     </div>
   `;
 
@@ -1207,7 +1090,6 @@ async function openAnchorModal() {
 // ---------------------------------------------------------------------------
 
 function bindEvents() {
-  // Student Switcher
   document.getElementById('tabJihoon').addEventListener('click', () => {
     if (state.isMining) return;
     state.activeStudent = 'jihoon';
@@ -1220,7 +1102,6 @@ function bindEvents() {
     renderAll();
   });
 
-  // Workspace Mode Tabs (Math vs Activity)
   document.getElementById('modeTabMath').addEventListener('click', () => {
     if (state.isMining) return;
     state.activePanel = 'math';
@@ -1233,57 +1114,15 @@ function bindEvents() {
     renderWorkspaceMode();
   });
 
-  // Activity Category Selector
   document.querySelectorAll('#activityCategoryBtns [data-act-cat]').forEach((btn) => {
     btn.addEventListener('click', () => {
       state.activityCategory = btn.getAttribute('data-act-cat');
-      const def = ACTIVITY_DEFAULTS[state.activityCategory];
-      document.getElementById('actTimeDelta').value = String(def?.defaultTimeDelta ?? 0);
       renderActivityCategoryUI();
     });
   });
 
-  // Activity Form -> Queue in Mempool
-  document.getElementById('formActivity').addEventListener('submit', (e) => {
-    e.preventDefault();
-    try {
-      const tx = readActivityFormTx();
-      const sid = state.activeStudent;
-      state.mempool[sid].push(tx);
-      saveState();
-      resetActivityForm();
-      renderAll();
-      showToast(`"${tx.title}" 활동이 Mempool 대기열에 담겼습니다!`, 'info');
-    } catch (err) {
-      showToast(err.message, 'error');
-    }
-  });
+  document.getElementById('formActivity').addEventListener('submit', handleActivityMine);
 
-  // Activity Form -> Mine Immediately
-  document.getElementById('btnActMineNow').addEventListener('click', async () => {
-    if (state.isMining) return;
-    try {
-      const tx = readActivityFormTx();
-      const sid = state.activeStudent;
-      state.mempool[sid].push(tx);
-      resetActivityForm();
-      const spec = buildActivityBlockSpec(state.mempool[sid]);
-      await runPowMining({
-        sid,
-        module: spec.module,
-        tier: spec.tier,
-        rewardAmount: spec.rewardAmount,
-        payload: spec.payload,
-        onSuccess: () => {
-          state.mempool[sid] = [];
-        }
-      });
-    } catch (err) {
-      showToast(err.message, 'error');
-    }
-  });
-
-  // Ledger Filters & Search
   document.querySelectorAll('#ledgerFilterBar [data-filter]').forEach((btn) => {
     btn.addEventListener('click', () => {
       state.ledgerFilter = btn.getAttribute('data-filter');
@@ -1296,12 +1135,10 @@ function bindEvents() {
     renderChain();
   });
 
-  // Math Problem Events
   document.getElementById('daySelect').addEventListener('change', (e) => {
     state.selectedDayIndex[state.activeStudent] = Number(e.target.value);
     saveState();
     renderProblems();
-    renderMempoolExplorer();
   });
 
   document.getElementById('formBasic').addEventListener('submit', (e) => {
@@ -1314,7 +1151,7 @@ function bindEvents() {
     handleCheckAnswer('adv');
   });
 
-  document.getElementById('btnMine').addEventListener('click', handleMine);
+  document.getElementById('btnMine').addEventListener('click', handleMathMine);
   document.getElementById('btnVerifyChain').addEventListener('click', handleVerifyChain);
 
   // Parent Mode PIN Toggle
@@ -1379,7 +1216,7 @@ function bindEvents() {
     renderAll();
     closeModal('modalAdd');
     e.target.reset();
-    showToast('새 문제 세트가 SHA-256 해시로 안전하게 등록되었습니다!', 'success');
+    showToast('새 문제 세트가 SHA-256 해시로 등록되었습니다!', 'success');
   });
 
   // Import JSON Modal
@@ -1449,7 +1286,6 @@ function bindEvents() {
     }
   });
 
-  // Sync Feed
   document.getElementById('btnSyncFeed').addEventListener('click', () => syncFeed({ silent: false }));
 
   // Export Ledger Backup
@@ -1464,7 +1300,7 @@ function bindEvents() {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
-    showToast('지훈·이현 전체 원장(활동·추억 포함)을 안전하게 백업했습니다.', 'info');
+    showToast('전체 원장을 안전하게 백업했습니다.', 'info');
   });
 
   // Restore Ledger Backup
@@ -1494,13 +1330,13 @@ function bindEvents() {
         return `✓ ${stu.name}: ${info.count}블록 무결성 확인 (tip ${info.tipHash.slice(0, 10)}...)`;
       });
       restorePreview.textContent = lines.join('\n');
-      restorePreview.className = 'rounded-xl bg-emerald-950/40 border border-emerald-500/40 p-3 text-xs text-emerald-300 font-mono-code whitespace-pre-line';
+      restorePreview.className = 'rounded-2xl bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-800 font-mono-code whitespace-pre-line';
       restorePreview.classList.remove('hidden');
       btnConfirmRestore.disabled = false;
     } catch (err) {
       state.pendingRestoreBundle = null;
       restorePreview.textContent = `⚠ 검증 실패: ${err.message}`;
-      restorePreview.className = 'rounded-xl bg-rose-950/40 border border-rose-500/40 p-3 text-xs text-rose-300 font-mono-code';
+      restorePreview.className = 'rounded-2xl bg-rose-50 border border-rose-200 p-3 text-xs text-rose-700 font-mono-code';
       restorePreview.classList.remove('hidden');
       btnConfirmRestore.disabled = true;
     }
@@ -1510,7 +1346,6 @@ function bindEvents() {
     if (!state.pendingRestoreBundle) return;
     const bundle = state.pendingRestoreBundle;
     state.chains = bundle.chains;
-    if (bundle.mempool) state.mempool = bundle.mempool;
     if (bundle.solved) state.solved = bundle.solved;
     if (bundle.problems) state.problems = bundle.problems;
     if (bundle.selectedDayIndex) state.selectedDayIndex = bundle.selectedDayIndex;
@@ -1529,7 +1364,7 @@ function bindEvents() {
   document.getElementById('btnCopyMerkle').addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText(state.currentAnchorMerkle);
-      showToast('머클 루트를 클립보드에 복사했습니다.', 'info');
+      showToast('머클 루트를 복사했습니다.', 'info');
     } catch {
       showToast('클립보드 복사를 지원하지 않는 환경입니다.', 'error');
     }
@@ -1563,13 +1398,12 @@ function bindEvents() {
     storage.clear();
     state.selectedDayIndex = { jihoon: 0, leehyun: 0 };
     state.solved = { jihoon: {}, leehyun: {} };
-    state.mempool = { jihoon: [], leehyun: [] };
     state.problems = structuredClone(DEFAULT_MATH_PROBLEMS);
     await initFreshChains();
     saveState();
     renderAll();
     closeModal('modalReset');
-    showToast('모든 체인이 Protocol v1 제네시스 블록으로 초기화되었습니다.', 'info');
+    showToast('모든 체인이 제네시스 블록으로 초기화되었습니다.', 'info');
   });
 
   // PWA Install Prompt
@@ -1593,10 +1427,6 @@ function registerServiceWorker() {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
   }
 }
-
-// ---------------------------------------------------------------------------
-// Bootstrap
-// ---------------------------------------------------------------------------
 
 async function bootstrap() {
   bindEvents();

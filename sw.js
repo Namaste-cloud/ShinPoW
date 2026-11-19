@@ -4,7 +4,7 @@
  * - 앱 셸 정적 자산: Stale-While-Revalidate (빠른 실행 + 자동 업데이트)
  */
 
-const CACHE_NAME = 'shinpow-shell-v2';
+const CACHE_NAME = 'shinpow-shell-v3';
 const APP_SHELL = [
   './',
   './index.html',

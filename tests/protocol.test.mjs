@@ -310,7 +310,7 @@ test('Adapter ABI selectors match solc-compiled ShinPoWAnchor artifact', async (
   assert.equal(SELECTOR_ANCHOR_BATCH, '0x' + ids['anchorBatchRoot(bytes32,uint256,uint256,bytes32)']);
 });
 
-test('Multi-activity Mempool bundling (study + game + memory) & net TIME accounting', async () => {
+test('Trustless activities enforce 0 TIME for memory/study/project, -TIME for game, and OP_RETURN note in math blocks', async () => {
   const stu = APP_CONFIG.students.leehyun;
   const genesis = await createGenesisBlock({
     chainId: stu.chainId,
@@ -318,56 +318,72 @@ test('Multi-activity Mempool bundling (study + game + memory) & net TIME account
     studentName: stu.name
   });
 
-  const txStudy = createActivityTx({
-    category: 'study',
-    title: '영어 원서 30분',
-    durationMinutes: 30,
-    timeDelta: 2,
-    tags: '#영어 #독서'
+  // 1) Math block with optional OP_RETURN 1-line memory note
+  const day = DEFAULT_MATH_PROBLEMS.leehyun[0];
+  const mathPayload = buildMathBlockPayload({
+    day,
+    parts: ['basic', 'adv'],
+    note: '곱셈과 나눗셈 둘 다 혼자 힘으로 풀었다!',
+    mood: '😎'
   });
-  const txGame = createActivityTx({
-    category: 'game',
-    title: '닌텐도 스위치',
-    durationMinutes: 20,
-    timeDelta: 1 // positive input for 'game' automatically normalizes to -1
+  assert.equal(mathPayload.note, '곱셈과 나눗셈 둘 다 혼자 힘으로 풀었다!');
+  const block1 = await mineBlock({
+    prevBlock: genesis,
+    chainId: stu.chainId,
+    module: 'math',
+    tier: 'MASTER',
+    reward: { amount: 3, unit: 'TIME' },
+    payload: mathPayload,
+    difficulty: '00'
   });
+
+  // 2) Self-attested memory/study/project MUST always be 0 TIME (no arbitrary minting)
   const txMemory = createActivityTx({
     category: 'memory',
     title: '가족과 한강 자전거',
     memo: '노을이 정말 예뻤다!',
-    timeDelta: 0,
     mood: '🤩',
     tags: '#가족 #추억'
   });
-
-  assert.equal(txGame.timeDelta, -1);
+  const txStudy = createActivityTx({
+    category: 'study',
+    title: '영어 원서 30분',
+    durationMinutes: 30,
+    tags: '#영어 #독서'
+  });
+  assert.equal(txMemory.timeDelta, 0);
+  assert.equal(txStudy.timeDelta, 0);
   assert.deepEqual(txStudy.tags, ['영어', '독서']);
 
-  const bundleSpec = buildActivityBlockSpec([txStudy, txGame, txMemory]);
-  assert.equal(bundleSpec.module, 'bundle');
-  assert.equal(bundleSpec.tier, 'BUNDLE');
-  assert.equal(bundleSpec.rewardAmount, 1); // +2 - 1 + 0 = +1 TIME
-  assert.equal(bundleSpec.payload.txCount, 3);
-  assert.equal(bundleSpec.payload.totalMinutes, 50);
-
-  const block1 = await mineBlock({
-    prevBlock: genesis,
-    chainId: stu.chainId,
-    module: bundleSpec.module,
-    tier: bundleSpec.tier,
-    reward: { amount: bundleSpec.rewardAmount, unit: 'TIME' },
-    payload: bundleSpec.payload,
-    difficulty: '00'
-  });
-
-  // Also test pure game block (-1 TIME)
-  const gameSpec = buildActivityBlockSpec([txGame]);
-  assert.equal(gameSpec.module, 'game');
-  assert.equal(gameSpec.tier, 'GAME');
-  assert.equal(gameSpec.rewardAmount, -1);
+  const memSpec = buildActivityBlockSpec(txMemory);
+  assert.equal(memSpec.module, 'memory');
+  assert.equal(memSpec.rewardAmount, 0);
 
   const block2 = await mineBlock({
     prevBlock: block1,
+    chainId: stu.chainId,
+    module: memSpec.module,
+    tier: memSpec.tier,
+    reward: { amount: memSpec.rewardAmount, unit: 'TIME' },
+    payload: memSpec.payload,
+    difficulty: '00'
+  });
+
+  // 3) Game time usage MUST burn negative TIME (-2 TIME)
+  const txGame = createActivityTx({
+    category: 'game',
+    title: '닌텐도 스위치',
+    durationMinutes: 20,
+    spendTime: 2
+  });
+  assert.equal(txGame.timeDelta, -2);
+  const gameSpec = buildActivityBlockSpec(txGame);
+  assert.equal(gameSpec.module, 'game');
+  assert.equal(gameSpec.tier, 'GAME');
+  assert.equal(gameSpec.rewardAmount, -2);
+
+  const block3 = await mineBlock({
+    prevBlock: block2,
     chainId: stu.chainId,
     module: gameSpec.module,
     tier: gameSpec.tier,
@@ -376,15 +392,23 @@ test('Multi-activity Mempool bundling (study + game + memory) & net TIME account
     difficulty: '00'
   });
 
-  const chain = [genesis, block1, block2];
+  const chain = [genesis, block1, block2, block3];
   const verifyRes = await verifyChain(chain, stu.chainId);
   assert.equal(verifyRes.valid, true);
 
+  // Tampering with the OP_RETURN note inside block1 must break payloadHash verification!
+  const tamperedNote = structuredClone(chain);
+  tamperedNote[1].payload.note = '변조된 추억';
+  const tamperedRes = await verifyChain(tamperedNote, stu.chainId);
+  assert.equal(tamperedRes.valid, false);
+  assert.equal(tamperedRes.failIndex, 1);
+
   const stats = summarizeChain(chain);
-  assert.equal(stats.earnedTime, 1);
-  assert.equal(stats.spentTime, 1);
-  assert.equal(stats.balanceTime, 0);
-  assert.equal(stats.moduleCounts.bundle, 1);
+  assert.equal(stats.earnedTime, 3);
+  assert.equal(stats.spentTime, 2);
+  assert.equal(stats.balanceTime, 1);
+  assert.equal(stats.moduleCounts.math, 1);
+  assert.equal(stats.moduleCounts.memory, 1);
   assert.equal(stats.moduleCounts.game, 1);
 });
 

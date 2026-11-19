@@ -1,23 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0f172a"/>
-      <stop offset="100%" stop-color="#1e1b4b"/>
-    </linearGradient>
-    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#fbbf24"/>
-      <stop offset="100%" stop-color="#ea580c"/>
+    <linearGradient id="brand" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3182F6"/>
+      <stop offset="100%" stop-color="#1B64DA"/>
     </linearGradient>
   </defs>
-  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-  <rect x="24" y="24" width="464" height="464" rx="92" fill="none" stroke="#334155" stroke-width="8"/>
-  <!-- Hex block -->
-  <polygon points="256,88 392,166 392,322 256,400 120,322 120,166" fill="url(#gold)" opacity="0.16" stroke="url(#gold)" stroke-width="14" stroke-linejoin="round"/>
-  <!-- Clock / Time hands inside block -->
-  <circle cx="256" cy="244" r="78" fill="none" stroke="#fbbf24" stroke-width="16"/>
-  <line x1="256" y1="244" x2="256" y2="194" stroke="#ffffff" stroke-width="16" stroke-linecap="round"/>
-  <line x1="256" y1="244" x2="296" y2="266" stroke="#fbbf24" stroke-width="16" stroke-linecap="round"/>
-  <circle cx="256" cy="244" r="10" fill="#ffffff"/>
-  <text x="256" y="454" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="800" font-size="44" fill="#f8fafc" letter-spacing="4">SHINPOW</text>
+  <rect width="512" height="512" rx="120" fill="url(#brand)"/>
+  <!-- Clean geometric hexagon block -->
+  <polygon points="256,104 388,180 388,332 256,408 124,332 124,180" fill="#FFFFFF" fill-opacity="0.14" stroke="#FFFFFF" stroke-width="18" stroke-linejoin="round"/>
+  <!-- Minimalist clock hands representing TIME -->
+  <circle cx="256" cy="256" r="74" fill="none" stroke="#FFFFFF" stroke-width="16" stroke-opacity="0.95"/>
+  <line x1="256" y1="256" x2="256" y2="208" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round"/>
+  <line x1="256" y1="256" x2="294" y2="274" stroke="#FDE047" stroke-width="16" stroke-linecap="round"/>
+  <circle cx="256" cy="256" r="10" fill="#FFFFFF"/>
 </svg>
-
