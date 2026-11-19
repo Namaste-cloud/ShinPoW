@@ -75,7 +75,7 @@ contract ShinPoWAnchor {
 
     /**
      * @notice 개별 ShinPoW 블록 해시를 온체인에 영구 기록합니다.
-     * @dev Selector: 0xda968797
+     * @dev Selector: 0x7a7c0266
      */
     function anchorBlock(
         bytes32 chainIdHash,

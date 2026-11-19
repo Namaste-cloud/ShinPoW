@@ -16,3 +16,4 @@ jobs:
           node-version: 22
       - name: Run ShinPoW Protocol Test Suite
         run: node --test tests/protocol.test.mjs
+

@@ -1,0 +1,382 @@
+{
+  "contractName": "ShinPoWAnchor",
+  "compiler": "0.8.24+commit.e11b9ed9.Emscripten.clang",
+  "abi": [
+    {
+      "inputs": [],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [],
+      "name": "AlreadyAnchored",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidAddress",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidRange",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "Unauthorized",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "chainIdHash",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "batchId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "fromIndex",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "toIndex",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "merkleRoot",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint64",
+          "name": "anchoredAt",
+          "type": "uint64"
+        }
+      ],
+      "name": "BatchAnchored",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "chainIdHash",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "blockIndex",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "blockHash",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "payloadHash",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "int16",
+          "name": "rewardDelta",
+          "type": "int16"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint64",
+          "name": "anchoredAt",
+          "type": "uint64"
+        }
+      ],
+      "name": "BlockAnchored",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "previousOwner",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "OwnershipTransferred",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "previousRelayer",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newRelayer",
+          "type": "address"
+        }
+      ],
+      "name": "RelayerUpdated",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "chainIdHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "fromIndex",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "toIndex",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "merkleRoot",
+          "type": "bytes32"
+        }
+      ],
+      "name": "anchorBatchRoot",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "chainIdHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "blockIndex",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "blockHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "payloadHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "int16",
+          "name": "rewardDelta",
+          "type": "int16"
+        }
+      ],
+      "name": "anchorBlock",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "anchoredBlocks",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "blockHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "payloadHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "int16",
+          "name": "rewardDelta",
+          "type": "int16"
+        },
+        {
+          "internalType": "uint64",
+          "name": "anchoredAt",
+          "type": "uint64"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "name": "batchCount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "batchRoots",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "name": "latestAnchoredIndex",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "relayer",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newRelayer",
+          "type": "address"
+        }
+      ],
+      "name": "setRelayer",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "transferOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x608060405234801561001057600080fd5b5060008054336001600160a01b0319918216811783556001805490921617905561079490819061004090396000f3fe608060405234801561001057600080fd5b506004361061009e5760003560e01c806388d3e3271161006657806388d3e327146101925780638da5cb5b146101c0578063e9d8f339146101d3578063f2fde38b146101fe578063fbe15a6d1461021157600080fd5b806337a45902146100a35780635f8d0a4b146100b85780636548e9bc146101415780637a7c0266146101545780638406c07914610167575b600080fd5b6100b66100b1366004610647565b610231565b005b6101056100c6366004610679565b6002602081815260009384526040808520909152918352912080546001808301549290930154909281900b9062010000900467ffffffffffffffff1684565b6040516101389493929190938452602084019290925260010b604083015267ffffffffffffffff16606082015260800190565b60405180910390f35b6100b661014f36600461069b565b610358565b6100b66101623660046106cb565b610405565b60015461017a906001600160a01b031681565b6040516001600160a01b039091168152602001610138565b6101b26101a036600461071e565b60056020526000908152604090205481565b604051908152602001610138565b60005461017a906001600160a01b031681565b6101b26101e1366004610679565b600460209081526000928352604080842090915290825290205481565b6100b661020c36600461069b565b61059b565b6101b261021f36600461071e565b60036020526000908152604090205481565b6000546001600160a01b0316331480159061025757506001546001600160a01b03163314155b15610274576040516282b42960e81b815260040160405180910390fd5b828210156102955760405163561ce9bb60e01b815260040160405180910390fd5b6000848152600560205260408120546102af906001610737565b600086815260056020908152604080832084905560048252808320848452825280832086905588835260039091529020549091508311156102fc5760008581526003602052604090208390555b604080518581526020810185905290810183905267ffffffffffffffff42166060820152819086907f592022a677c20010f40fee23773b8bbae04bea746039a5cc7fc884fb2c752f649060800160405180910390a35050505050565b6000546001600160a01b03163314610382576040516282b42960e81b815260040160405180910390fd5b6001600160a01b0381166103a95760405163e6c4247b60e01b815260040160405180910390fd5b6001546040516001600160a01b038084169216907f605ca4e43489fb38b91aa63dd9147cd3847957694b080b9285ec898b34269f0c90600090a3600180546001600160a01b0319166001600160a01b0392909216919091179055565b6000546001600160a01b0316331480159061042b57506001546001600160a01b03163314155b15610448576040516282b42960e81b815260040160405180910390fd5b6000858152600260208181526040808420888552909152909120015462010000900467ffffffffffffffff16156104925760405163a0094ce360e01b815260040160405180910390fd5b604080516080810182528481526020808201858152600185810b84860190815267ffffffffffffffff428181166060880190815260008e815260028089528a82208f835289528a822099518a5596519589019590955592519690940180549251909116620100000269ffffffffffffffffffff1990921661ffff909616959095171790935588835260039091529190205485111561053c5760008681526003602052604090208590555b6040805185815260208101859052600184900b8183015267ffffffffffffffff831660608201529051869188917ffe6d50aa5b02e496b6d1beee051ff729b991119949edf9f5f3c684de264e39979181900360800190a3505050505050565b6000546001600160a01b031633146105c5576040516282b42960e81b815260040160405180910390fd5b6001600160a01b0381166105ec5760405163e6c4247b60e01b815260040160405180910390fd5b600080546040516001600160a01b03808516939216917f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e091a3600080546001600160a01b0319166001600160a01b0392909216919091179055565b6000806000806080858703121561065d57600080fd5b5050823594602084013594506040840135936060013592509050565b6000806040838503121561068c57600080fd5b50508035926020909101359150565b6000602082840312156106ad57600080fd5b81356001600160a01b03811681146106c457600080fd5b9392505050565b600080600080600060a086880312156106e357600080fd5b8535945060208601359350604086013592506060860135915060808601358060010b811461071057600080fd5b809150509295509295909350565b60006020828403121561073057600080fd5b5035919050565b8082018082111561075857634e487b7160e01b600052601160045260246000fd5b9291505056fea26469706673582212205e64c2c56591816d0998b423fc3b1bbdc8b601c324956331ce1db04c715d960064736f6c63430008180033",
+  "methodIdentifiers": {
+    "anchorBatchRoot(bytes32,uint256,uint256,bytes32)": "37a45902",
+    "anchorBlock(bytes32,uint256,bytes32,bytes32,int16)": "7a7c0266",
+    "anchoredBlocks(bytes32,uint256)": "5f8d0a4b",
+    "batchCount(bytes32)": "88d3e327",
+    "batchRoots(bytes32,uint256)": "e9d8f339",
+    "latestAnchoredIndex(bytes32)": "fbe15a6d",
+    "owner()": "8da5cb5b",
+    "relayer()": "8406c079",
+    "setRelayer(address)": "6548e9bc",
+    "transferOwnership(address)": "f2fde38b"
+  }
+}

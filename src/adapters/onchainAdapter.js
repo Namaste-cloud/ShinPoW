@@ -8,7 +8,7 @@
 import { sha256, computeMerkleRoot } from '../core/crypto.js';
 
 // Keccak-256 4-byte selectors verified for contracts/ShinPoWAnchor.sol
-export const SELECTOR_ANCHOR_BLOCK = '0xda968797'; // anchorBlock(bytes32,uint256,bytes32,bytes32,int16)
+export const SELECTOR_ANCHOR_BLOCK = '0x7a7c0266'; // anchorBlock(bytes32,uint256,bytes32,bytes32,int16)
 export const SELECTOR_ANCHOR_BATCH = '0x37a45902'; // anchorBatchRoot(bytes32,uint256,uint256,bytes32)
 
 function padUint256(value) {

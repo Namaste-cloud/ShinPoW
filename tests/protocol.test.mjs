@@ -303,6 +303,13 @@ test('Base on-chain ABI calldata encoding matches ShinPoWAnchor.sol fixed-word l
   assert.equal(batchData.length, 266);
 });
 
+test('Adapter ABI selectors match solc-compiled ShinPoWAnchor artifact', async () => {
+  const artifact = JSON.parse(await fs.readFile(path.resolve('contracts/artifacts/ShinPoWAnchor.json'), 'utf8'));
+  const ids = artifact.methodIdentifiers;
+  assert.equal(SELECTOR_ANCHOR_BLOCK, '0x' + ids['anchorBlock(bytes32,uint256,bytes32,bytes32,int16)']);
+  assert.equal(SELECTOR_ANCHOR_BATCH, '0x' + ids['anchorBatchRoot(bytes32,uint256,uint256,bytes32)']);
+});
+
 test('Multi-activity Mempool bundling (study + game + memory) & net TIME accounting', async () => {
   const stu = APP_CONFIG.students.leehyun;
   const genesis = await createGenesisBlock({

@@ -95,3 +95,4 @@ When the user asks to **add/publish today's problems to ShinPoW** (`data/problem
 - Avoid overly intimidating terminology for lower grades.
 - When advancing 1–2 grades or introducing Olympiad/STEAM concepts, connect the new concept to intuitive foundations the child already knows.
 - Never output the solution together with the problem unless explicitly requested.
+

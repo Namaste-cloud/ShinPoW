@@ -53,3 +53,4 @@ forge create contracts/ShinPoWAnchor.sol:ShinPoWAnchor \
    - `onchain.contractAddress`: 메인넷 배포 주소
 3. `docs/PROTOCOL.md` 하단에 공식 제네시스 해시와 컨트랙트 주소를 영구 기록합니다.
 4. 나중에 아이들이 성인이 되었을 때 본인 지갑 주소로 `transferOwnership(아이_지갑_주소)`를 호출해 온체인 컨트랙트 소유권을 그대로 물려줄 수 있습니다.
+
