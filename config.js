@@ -112,9 +112,9 @@ export const APP_CONFIG = {
         'https://alice.btc.calendar.opentimestamps.org/digest'
       ]
     },
-    enabled: false,
+    enabled: true,
     network: 'base-sepolia', // 'base-sepolia' | 'base-mainnet'
-    contractAddress: '',
+    contractAddress: '0x53D2A84Bf2B6D23347E21BaE50A7942eA10Ba4E4',
     networks: {
       'base-sepolia': {
         chainIdHex: '0x14a34', // 84532
