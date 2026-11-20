@@ -86,9 +86,9 @@ SHINPOW|v{version}|{chainId}|{index}|{prevHash}|{timestamp}|{module}|{tier}|{rew
 3. `contracts/ShinPoWAnchor.sol`을 **Base Mainnet**에 배포하고 `config.js`의 `onchain.contractAddress`에 기록합니다.
 4. 공식 제네시스 해시(`Block #0`)를 이 문서 하단에 영구 기록합니다.
 
-### Official Genesis Record
-- **Status**: `PREVIEW` (공식 런칭 전 테스트 기간)
-- **Base Mainnet Anchor Contract**: *(배포 후 기록)*
-- **Jihoon Genesis Hash (`shinpow:jihoon`)**: *(공식 런칭 후 고정)*
-- **Leehyun Genesis Hash (`shinpow:leehyun`)**: *(공식 런칭 후 고정)*
+### Official Genesis Record (2026-11-21)
+- **Status**: `OFFICIAL` (`2026-11-21T00:00:00+09:00` 공식 가동)
+- **Base Sepolia Anchor Contract**: `0x53D2A84Bf2B6D23347E21BaE50A7942eA10Ba4E4`
+- **Jihoon Official Genesis Hash (`shinpow:jihoon`)**: `b75ae26e41f63fadecac4d35b161afbf0471bcf512f43424c2ea7d4e235e24f7`
+- **Leehyun Official Genesis Hash (`shinpow:leehyun`)**: `64d915cee216469cef355c6070ba72f16d464d1bb0ef0581cf99aba5f54194a5`
 

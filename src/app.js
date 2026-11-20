@@ -239,6 +239,13 @@ function getBlockTheme(block) {
       amountCls: 'text-[#1B64DA]'
     };
   }
+  if (block.module === 'reading') {
+    return {
+      tileAccent: 'border-t-orange-500 bg-orange-50/40',
+      badgeCls: 'bg-orange-100 text-orange-800',
+      amountCls: 'text-orange-700'
+    };
+  }
   if (block.module === 'game') {
     return {
       tileAccent: 'border-t-rose-500 bg-rose-50/40',
@@ -329,8 +336,8 @@ function renderTabsAndStats() {
   document.getElementById('statHeight').textContent = `#${activeStats.height}`;
   document.getElementById('statBlocksCount').textContent = `총 ${activeStats.count}개`;
   document.getElementById('statMathCount').textContent = activeStats.moduleCounts.math || 0;
+  document.getElementById('statReadingCount').textContent = activeStats.moduleCounts.reading || 0;
   document.getElementById('statLifeCount').textContent = lifeCount;
-  document.getElementById('statGameCount').textContent = activeStats.moduleCounts.game || 0;
   document.getElementById('statDifficulty').textContent = `${APP_CONFIG.protocol.difficultyPrefix}...`;
   document.getElementById('statAnchored').textContent = `앵커 ${activeStats.anchoredCount}`;
 
@@ -592,24 +599,13 @@ function renderActivityCategoryUI() {
 
   const def = ACTIVITY_DEFAULTS[cat];
   const notice = document.getElementById('actRuleNotice');
-  const spendWrap = document.getElementById('actSpendWrap');
   const mineLabel = document.getElementById('btnActMineLabel');
 
   if (def) {
     document.getElementById('actTitle').placeholder = def.placeholderTitle;
     document.getElementById('actMemo').placeholder = def.placeholderMemo;
-  }
-
-  if (cat === 'game') {
-    const stats = summarizeChain(state.chains[state.activeStudent]);
-    spendWrap.classList.remove('hidden');
-    notice.className = 'rounded-xl px-3.5 py-2.5 text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200/80';
-    notice.textContent = `🎮 게임·자유시간 사용은 보유 잔액(현재 ${stats.balanceTime} TIME)에서 스스로 차감하여 기록합니다.`;
-    mineLabel.textContent = 'TIME 사용하고 블록으로 기록하기';
-  } else {
-    spendWrap.classList.add('hidden');
     notice.className = 'rounded-xl px-3.5 py-2.5 text-xs font-medium bg-emerald-50 text-emerald-800 border border-emerald-200/80';
-    notice.textContent = `✨ ${def.label}은 0 TIME 자유 기록입니다. 부모 승인 없이 언제든 내 체인에 영구 보존할 수 있어요.`;
+    notice.textContent = `${def.icon} ${def.label}은 0 TIME 자유 기록입니다. 부모 승인 없이 언제든 내 체인에 영구 보존할 수 있어요.`;
     mineLabel.textContent = '바로 블록으로 영구 기록하기';
   }
 }
@@ -617,10 +613,27 @@ function renderActivityCategoryUI() {
 function renderProblems() {
   const sid = state.activeStudent;
   const list = state.problems[sid] || [];
+  const select = document.getElementById('daySelect');
+  const emptyCard = document.getElementById('emptyProblemsCard');
+  const cardBasic = document.getElementById('cardBasic');
+  const cardAdv = document.getElementById('cardAdv');
+
+  if (list.length === 0) {
+    select.innerHTML = '<option value="0">가동 대기 중 (11/21 시작)</option>';
+    emptyCard.classList.remove('hidden');
+    cardBasic.classList.add('hidden');
+    cardAdv.classList.add('hidden');
+    renderMiningConsole();
+    return;
+  }
+
+  emptyCard.classList.add('hidden');
+  cardBasic.classList.remove('hidden');
+  cardAdv.classList.remove('hidden');
+
   const dayIdx = Math.min(state.selectedDayIndex[sid] || 0, Math.max(0, list.length - 1));
   state.selectedDayIndex[sid] = dayIdx;
 
-  const select = document.getElementById('daySelect');
   select.innerHTML = '';
   list.forEach((p, idx) => {
     const opt = document.createElement('option');
@@ -648,7 +661,6 @@ function renderProblems() {
   const inputBasic = document.getElementById('inputBasic');
   const btnBasic = document.getElementById('btnCheckBasic');
   const badgeBasic = document.getElementById('basicStatusBadge');
-  const cardBasic = document.getElementById('cardBasic');
 
   if (mined.basicMined) {
     badgeBasic.textContent = `채굴 완료 ✓ (+${APP_CONFIG.tiers.CORE.reward} ${unit})`;
@@ -682,7 +694,6 @@ function renderProblems() {
   const inputAdv = document.getElementById('inputAdv');
   const btnAdv = document.getElementById('btnCheckAdv');
   const badgeAdv = document.getElementById('advStatusBadge');
-  const cardAdv = document.getElementById('cardAdv');
 
   if (mined.advMined) {
     badgeAdv.textContent = `채굴 완료 ✓ (+${APP_CONFIG.tiers.BOOST.reward} ${unit})`;
@@ -1024,7 +1035,6 @@ async function handleActivityMine(e) {
       title: document.getElementById('actTitle').value,
       memo: document.getElementById('actMemo').value,
       durationMinutes: document.getElementById('actDuration').value,
-      spendTime: document.getElementById('actSpendTime').value,
       mood: document.getElementById('actMood').value,
       tags: document.getElementById('actTags').value,
       link: document.getElementById('actLink').value

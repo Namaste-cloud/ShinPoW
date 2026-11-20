@@ -193,10 +193,10 @@
           <span class="text-xs font-medium text-[#6B7684]">기록 분포</span>
           <div class="mt-2 flex items-center gap-2.5 text-xs font-bold text-[#333D4B] tabular-nums">
             <span title="수학 블록">📐 <span id="statMathCount">0</span></span>
+            <span title="독서 기록">📖 <span id="statReadingCount">0</span></span>
             <span title="추억·학습·프로젝트">✨ <span id="statLifeCount">0</span></span>
-            <span title="게임·자유시간">🎮 <span id="statGameCount">0</span></span>
           </div>
-          <div class="text-[11px] text-[#8B95A1] mt-1">수학 · 추억 · 사용</div>
+          <div class="text-[11px] text-[#8B95A1] mt-1">수학 · 독서 · 추억</div>
         </div>
 
         <div class="surface-card p-4 flex flex-col justify-between">
@@ -247,7 +247,7 @@
             </button>
             <button id="modeTabActivity" type="button" class="py-2.5 px-3 rounded-xl text-[13px] font-bold transition cursor-pointer flex items-center justify-center gap-1.5">
               <span>✨</span>
-              <span>추억 · 활동 · 사용</span>
+              <span>추억 · 독서 · 활동</span>
             </button>
           </div>
 
@@ -259,6 +259,13 @@
                 <p class="text-xs text-[#6B7684] mt-0.5">기본 <strong class="text-[#3182F6]">+1 TIME</strong>, 심화 <strong class="text-amber-600">+2 TIME</strong> · 맞히면 바로 채굴해요</p>
               </div>
               <select id="daySelect" aria-label="날짜별 문제 선택" class="bg-[#F9FAFB] border border-[#D1D6DB] text-[#191F28] text-xs font-semibold rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3182F6] cursor-pointer"></select>
+            </div>
+
+            <!-- Genesis Launch Waiting State (shown when no problem sets yet) -->
+            <div id="emptyProblemsCard" class="hidden rounded-2xl border border-emerald-200 bg-emerald-50/50 p-6 text-center space-y-2">
+              <div class="text-2xl">🌱</div>
+              <div class="text-sm font-bold text-[#191F28]">공식 제네시스 체인이 준비되었습니다!</div>
+              <p class="text-xs text-[#4E5968] leading-relaxed">내일(2026-11-21) 오전 05:30에 첫 번째 공식 수학 미션이 자동으로 도착합니다.<br/>오늘의 독서나 추억은 오른쪽 <strong>추억 · 독서 · 활동</strong> 탭에서 지금도 바로 기록할 수 있어요.</p>
             </div>
 
             <!-- Problem 1: Basic (+1 TIME) -->
@@ -298,19 +305,19 @@
             </div>
           </div>
 
-          <!-- PANEL 2: Trustless Activity & Memory Logger (Direct 1-Click Block Mining) -->
+          <!-- PANEL 2: Trustless Activity, Reading & Memory Logger -->
           <div id="panelActivity" class="hidden space-y-4">
             <div>
-              <h2 class="text-lg font-bold text-[#191F28]">자율 활동 · 추억 · 시간 사용</h2>
-              <p class="text-xs text-[#6B7684] mt-0.5">부모 승인 없이 추억·학습·프로젝트(0 TIME)와 게임시간 사용(-TIME)을 바로 블록에 기록해요.</p>
+              <h2 class="text-lg font-bold text-[#191F28]">자율 활동 · 독서 · 추억 기록</h2>
+              <p class="text-xs text-[#6B7684] mt-0.5">부모 승인 없이 추억·독서·자율학습·프로젝트(0 TIME)를 바로 블록에 영구 기록해요.</p>
             </div>
 
             <!-- 4 Clean Category Pills -->
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-2" id="activityCategoryBtns">
               <button type="button" data-act-cat="memory" class="rounded-xl px-2.5 py-2.5 text-xs font-bold border transition cursor-pointer text-center">✨ 추억·일기</button>
+              <button type="button" data-act-cat="reading" class="rounded-xl px-2.5 py-2.5 text-xs font-bold border transition cursor-pointer text-center">📖 독서 기록</button>
               <button type="button" data-act-cat="study" class="rounded-xl px-2.5 py-2.5 text-xs font-bold border transition cursor-pointer text-center">📚 자율 학습</button>
               <button type="button" data-act-cat="project" class="rounded-xl px-2.5 py-2.5 text-xs font-bold border transition cursor-pointer text-center">💻 프로젝트</button>
-              <button type="button" data-act-cat="game" class="rounded-xl px-2.5 py-2.5 text-xs font-bold border transition cursor-pointer text-center">🎮 게임 사용</button>
             </div>
 
             <!-- Trustless Rule Banner -->
@@ -322,20 +329,10 @@
                 <input id="actTitle" type="text" required placeholder="예: 가족과 한강 자전거 라이딩" class="w-full bg-white border border-[#D1D6DB] rounded-xl px-3.5 py-2.5 text-sm text-[#191F28] placeholder-[#8B95A1] focus:outline-none focus:ring-2 focus:ring-[#3182F6]" />
               </div>
 
-              <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              <div class="grid grid-cols-2 gap-2.5">
                 <div>
                   <label for="actDuration" class="block text-xs font-semibold text-[#4E5968] mb-1">시간 (분)</label>
                   <input id="actDuration" type="number" min="0" max="600" value="30" class="w-full bg-white border border-[#D1D6DB] rounded-xl px-3 py-2 text-sm text-[#191F28] font-mono-code" />
-                </div>
-
-                <div id="actSpendWrap" class="hidden">
-                  <label for="actSpendTime" class="block text-xs font-semibold text-rose-600 mb-1">사용할 TIME</label>
-                  <select id="actSpendTime" class="w-full bg-white border border-rose-200 rounded-xl px-3 py-2 text-sm font-bold text-rose-600 font-mono-code">
-                    <option value="1">-1 TIME</option>
-                    <option value="2">-2 TIME</option>
-                    <option value="3">-3 TIME</option>
-                    <option value="5">-5 TIME</option>
-                  </select>
                 </div>
 
                 <div>
@@ -391,10 +388,10 @@
           <div id="ledgerFilterBar" class="flex items-center gap-1.5 flex-wrap">
             <button type="button" data-filter="all" class="px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer">전체</button>
             <button type="button" data-filter="math" class="px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer">📐 수학</button>
+            <button type="button" data-filter="reading" class="px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer">📖 독서</button>
             <button type="button" data-filter="memory" class="px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer">✨ 추억</button>
             <button type="button" data-filter="study" class="px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer">📚 학습</button>
             <button type="button" data-filter="project" class="px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer">💻 프로젝트</button>
-            <button type="button" data-filter="game" class="px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer">🎮 게임</button>
           </div>
 
           <!-- Chronicle List -->

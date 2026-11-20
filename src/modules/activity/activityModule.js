@@ -1,13 +1,13 @@
 /**
- * ShinPoW Module: Trustless Activity & Life Chronicle (무승인 자율 기록 모듈)
+ * ShinPoW Module: Trustless Activity & Reading Chronicle (무승인 자율 기록 모듈)
  * ---------------------------------------------------------------------------
  * 부모 승인 없이 아이가 스스로 영원불변 장부를 쓸 수 있는 탈중앙 설계:
- *  - 추억·일기(memory), 프로젝트(project), 자율 학습(study) -> 0 TIME (화폐 발행 불가, 자유 기록)
- *  - 게임·자유시간 사용(game) -> -TIME (보유 TIME을 스스로 차감하여 기록)
+ *  - 추억·일기(memory), 독서(reading), 자율 학습(study), 프로젝트(project) -> 0 TIME
  *  (+TIME 발행은 오직 암호학적으로 검증된 수학 정답 해시 통과 시에만 발생합니다.)
+ *  (추후 독서 모듈은 도서명·페이지·별점·서평 전용 구조로 독립 확장 가능합니다.)
  */
 
-export const ACTIVITY_MODULES = ['memory', 'study', 'project', 'game'];
+export const ACTIVITY_MODULES = ['memory', 'reading', 'study', 'project'];
 
 export const ACTIVITY_DEFAULTS = {
   memory: {
@@ -15,10 +15,20 @@ export const ACTIVITY_DEFAULTS = {
     tier: 'MEMORY',
     label: '오늘의 추억',
     icon: '✨',
-    trustlessMode: 'zero', // 항상 0 TIME (무제한 자유 기록)
+    trustlessMode: 'zero',
     defaultTimeDelta: 0,
     placeholderTitle: '예: 가족과 한강 자전거 라이딩',
     placeholderMemo: '오늘 있었던 재미있는 일, 느낀 점, 기억하고 싶은 순간을 남겨보세요.'
+  },
+  reading: {
+    module: 'reading',
+    tier: 'READING',
+    label: '독서 기록',
+    icon: '📖',
+    trustlessMode: 'zero',
+    defaultTimeDelta: 0,
+    placeholderTitle: '예: 해리포터와 마법사의 돌 (3장까지)',
+    placeholderMemo: '읽은 책에서 인상 깊었던 장면이나 생각을 짧게 남겨보세요.'
   },
   study: {
     module: 'study',
@@ -39,16 +49,6 @@ export const ACTIVITY_DEFAULTS = {
     defaultTimeDelta: 0,
     placeholderTitle: '예: 레고 로봇 라인트레이서 완성',
     placeholderMemo: '만든 작품, 코드, 시행착오를 남겨두면 멋진 미래 포트폴리오가 됩니다.'
-  },
-  game: {
-    module: 'game',
-    tier: 'GAME',
-    label: '게임·자유시간 사용',
-    icon: '🎮',
-    trustlessMode: 'burn', // 항상 음수(-1 이상) 차감
-    defaultTimeDelta: -1,
-    placeholderTitle: '예: 마인크래프트 / 닌텐도 스위치',
-    placeholderMemo: '내가 채굴한 TIME을 정직하게 사용하고 기록해요.'
   }
 };
 
@@ -64,14 +64,13 @@ export function parseTags(rawTags) {
 }
 
 /**
- * 무승인(Trustless) 규칙을 강제한 Activity 레코드 생성
+ * 무승인(Trustless) 규칙을 강제한 Activity 레코드 생성 (항상 0 TIME)
  */
 export function createActivityTx({
   category,
   title,
   memo = '',
   durationMinutes = 0,
-  spendTime = 1,
   mood = '😊',
   tags = '',
   link = '',
@@ -85,15 +84,7 @@ export function createActivityTx({
     throw new Error('기록 제목을 입력해 주세요.');
   }
 
-  const def = ACTIVITY_DEFAULTS[category];
   const parsedDuration = Math.max(0, Math.round(Number(durationMinutes) || 0));
-
-  let timeDelta = 0;
-  if (def.trustlessMode === 'burn') {
-    const burnAmount = Math.max(1, Math.min(50, Math.round(Math.abs(Number(spendTime) || 1))));
-    timeDelta = -burnAmount;
-  }
-
   const now = new Date();
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
@@ -103,7 +94,7 @@ export function createActivityTx({
     title: cleanTitle,
     memo: String(memo || '').trim(),
     durationMinutes: parsedDuration,
-    timeDelta,
+    timeDelta: 0,
     mood: String(mood || '😊').trim(),
     tags: parseTags(tags),
     link: String(link || '').trim(),

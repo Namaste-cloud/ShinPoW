@@ -241,6 +241,7 @@ export function summarizeChain(chain = []) {
   let anchoredCount = 0;
   const moduleCounts = {
     math: 0,
+    reading: 0,
     study: 0,
     game: 0,
     memory: 0,

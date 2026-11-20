@@ -56,42 +56,48 @@ test('canonicalStringify is deterministic regardless of key order', () => {
   assert.equal(canonicalStringify(a), canonicalStringify(b));
 });
 
-test('All 12 built-in math problem hashes verify against expected answers', async () => {
-  const expectedAnswers = {
-    'jh-d1-basic': '111.6',
-    'jh-d1-adv': '7',
-    'jh-d2-basic': '6',
-    'jh-d2-adv': '2',
-    'jh-d3-basic': '15000',
-    'jh-d3-adv': '11',
-    'lh-d1-basic': '144',
-    'lh-d1-adv': '13',
-    'lh-d2-basic': '155',
-    'lh-d2-adv': '10',
-    'lh-d3-basic': '3/8',
-    'lh-d3-adv': '26'
-  };
-
-  for (const sid of ['jihoon', 'leehyun']) {
-    for (const day of DEFAULT_MATH_PROBLEMS[sid]) {
-      for (const part of ['basic', 'adv']) {
-        const prob = day[part];
-        const ans = expectedAnswers[prob.id];
-        assert.ok(ans !== undefined, `Missing test vector for ${prob.id}`);
-        const ok = await verifyAnswer(prob, ans, APP_CONFIG.protocol.answerSalt);
-        assert.equal(ok, true, `Expected answer "${ans}" failed for ${prob.id}`);
-        const wrong = await verifyAnswer(prob, '999999', APP_CONFIG.protocol.answerSalt);
-        assert.equal(wrong, false);
-      }
-    }
+const SAMPLE_DAY = {
+  id: 'jh-sample-1',
+  label: '2026-11-21 (토)',
+  basic: {
+    id: 'jh-sample-1-basic',
+    topic: '원의 넓이 · 3등급',
+    question: '반지름이 6cm인 원의 넓이는?',
+    answerHash: 'f24f336a1882b3c73c67da95fede2497b8416d658091a0eff2c3c60d94cf0cb3'
+  },
+  adv: {
+    id: 'jh-sample-1-adv',
+    topic: '비례배분 · 4등급',
+    question: '구슬 63개를 5:4로 나누면 차이?',
+    answerHash: '155ac54c8346f193705ca6affa6a92f21c2f333f0a8375be14e2c3da3290cb16'
   }
+};
+
+test('Math answer hashing & verification handles units, spaces, and fractions accurately', async () => {
+  const sample = await parseProblemsPayload(
+    {
+      jihoon: [
+        {
+          id: 't1',
+          label: 'test',
+          basic: { topic: '원의 넓이', question: 'Q1', answer: '111.6' },
+          adv: { topic: '분수', question: 'Q2', answer: '3/8' }
+        }
+      ],
+      leehyun: []
+    },
+    APP_CONFIG.protocol.answerSalt
+  );
+  assert.equal(await verifyAnswer(sample.jihoon[0].basic, '111.6 cm²', APP_CONFIG.protocol.answerSalt), true);
+  assert.equal(await verifyAnswer(sample.jihoon[0].adv, ' 3/8 ', APP_CONFIG.protocol.answerSalt), true);
+  assert.equal(await verifyAnswer(sample.jihoon[0].adv, '5/8', APP_CONFIG.protocol.answerSalt), false);
 });
 
 test('data/problems.json is valid JSON with SHA-256 hashed answers only (no plaintext answers)', async () => {
   const raw = await fs.readFile(path.resolve('data/problems.json'), 'utf8');
   const parsed = JSON.parse(raw);
-  assert.ok(parsed.jihoon.length >= DEFAULT_MATH_PROBLEMS.jihoon.length);
-  assert.ok(parsed.leehyun.length >= DEFAULT_MATH_PROBLEMS.leehyun.length);
+  assert.ok(Array.isArray(parsed.jihoon));
+  assert.ok(Array.isArray(parsed.leehyun));
   for (const sid of ['jihoon', 'leehyun']) {
     for (const day of parsed[sid]) {
       for (const part of ['basic', 'adv']) {
@@ -150,7 +156,7 @@ test('Protocol v1 Genesis -> Mine -> Verify -> Detect tampering', async () => {
     note: APP_CONFIG.protocol.genesisNote
   });
 
-  const day = DEFAULT_MATH_PROBLEMS.jihoon[0];
+  const day = SAMPLE_DAY;
   const block1 = await mineBlock({
     prevBlock: genesis,
     chainId: stu.chainId,
@@ -326,7 +332,7 @@ test('Adapter ABI selectors match solc-compiled ShinPoWAnchor artifact', async (
   assert.equal(SELECTOR_ANCHOR_BATCH, '0x' + ids['anchorBatchRoot(bytes32,uint256,uint256,bytes32)']);
 });
 
-test('Trustless activities enforce 0 TIME for memory/study/project, -TIME for game, and OP_RETURN note in math blocks', async () => {
+test('Trustless activities enforce 0 TIME for memory/reading/study/project and OP_RETURN note in math blocks', async () => {
   const stu = APP_CONFIG.students.leehyun;
   const genesis = await createGenesisBlock({
     chainId: stu.chainId,
@@ -335,9 +341,8 @@ test('Trustless activities enforce 0 TIME for memory/study/project, -TIME for ga
   });
 
   // 1) Math block with optional OP_RETURN 1-line memory note
-  const day = DEFAULT_MATH_PROBLEMS.leehyun[0];
   const mathPayload = buildMathBlockPayload({
-    day,
+    day: SAMPLE_DAY,
     parts: ['basic', 'adv'],
     note: '곱셈과 나눗셈 둘 다 혼자 힘으로 풀었다!',
     mood: '😎'
@@ -353,7 +358,7 @@ test('Trustless activities enforce 0 TIME for memory/study/project, -TIME for ga
     difficulty: '00'
   });
 
-  // 2) Self-attested memory/study/project MUST always be 0 TIME (no arbitrary minting)
+  // 2) Self-attested memory/reading/study/project MUST always be 0 TIME
   const txMemory = createActivityTx({
     category: 'memory',
     title: '가족과 한강 자전거',
@@ -361,15 +366,16 @@ test('Trustless activities enforce 0 TIME for memory/study/project, -TIME for ga
     mood: '🤩',
     tags: '#가족 #추억'
   });
-  const txStudy = createActivityTx({
-    category: 'study',
-    title: '영어 원서 30분',
-    durationMinutes: 30,
-    tags: '#영어 #독서'
+  const txReading = createActivityTx({
+    category: 'reading',
+    title: '해리포터와 마법사의 돌',
+    durationMinutes: 40,
+    memo: '호그와트 입학 장면이 재미있었다.',
+    tags: '#독서 #판타지'
   });
   assert.equal(txMemory.timeDelta, 0);
-  assert.equal(txStudy.timeDelta, 0);
-  assert.deepEqual(txStudy.tags, ['영어', '독서']);
+  assert.equal(txReading.timeDelta, 0);
+  assert.deepEqual(txReading.tags, ['독서', '판타지']);
 
   const memSpec = buildActivityBlockSpec(txMemory);
   assert.equal(memSpec.module, 'memory');
@@ -385,26 +391,18 @@ test('Trustless activities enforce 0 TIME for memory/study/project, -TIME for ga
     difficulty: '00'
   });
 
-  // 3) Game time usage MUST burn negative TIME (-2 TIME)
-  const txGame = createActivityTx({
-    category: 'game',
-    title: '닌텐도 스위치',
-    durationMinutes: 20,
-    spendTime: 2
-  });
-  assert.equal(txGame.timeDelta, -2);
-  const gameSpec = buildActivityBlockSpec(txGame);
-  assert.equal(gameSpec.module, 'game');
-  assert.equal(gameSpec.tier, 'GAME');
-  assert.equal(gameSpec.rewardAmount, -2);
+  const readSpec = buildActivityBlockSpec(txReading);
+  assert.equal(readSpec.module, 'reading');
+  assert.equal(readSpec.tier, 'READING');
+  assert.equal(readSpec.rewardAmount, 0);
 
   const block3 = await mineBlock({
     prevBlock: block2,
     chainId: stu.chainId,
-    module: gameSpec.module,
-    tier: gameSpec.tier,
-    reward: { amount: gameSpec.rewardAmount, unit: 'TIME' },
-    payload: gameSpec.payload,
+    module: readSpec.module,
+    tier: readSpec.tier,
+    reward: { amount: readSpec.rewardAmount, unit: 'TIME' },
+    payload: readSpec.payload,
     difficulty: '00'
   });
 
@@ -421,11 +419,11 @@ test('Trustless activities enforce 0 TIME for memory/study/project, -TIME for ga
 
   const stats = summarizeChain(chain);
   assert.equal(stats.earnedTime, 3);
-  assert.equal(stats.spentTime, 2);
-  assert.equal(stats.balanceTime, 1);
+  assert.equal(stats.spentTime, 0);
+  assert.equal(stats.balanceTime, 3);
   assert.equal(stats.moduleCounts.math, 1);
   assert.equal(stats.moduleCounts.memory, 1);
-  assert.equal(stats.moduleCounts.game, 1);
+  assert.equal(stats.moduleCounts.reading, 1);
 });
 
 test('OpenTimestamps (.ots) binary proof framing & Base64 round-trip', () => {

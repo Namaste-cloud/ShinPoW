@@ -4,7 +4,7 @@
  * - 오프라인: 캐시된 앱 셸과 문제 데이터로 끊김 없이 동작
  */
 
-const CACHE_NAME = 'shinpow-shell-v6';
+const CACHE_NAME = 'shinpow-shell-v7';
 const APP_SHELL = [
   './',
   './index.html',
