@@ -20,7 +20,7 @@ if (!API_KEY) {
   process.exit(1);
 }
 
-const MODELS = (process.env.GEMINI_MODEL || 'gemini-2.5-pro,gemini-2.5-flash')
+const MODELS = (process.env.GEMINI_MODEL || 'gemini-3.1-pro-preview,gemini-3.8-flash')
   .split(',')
   .map((m) => m.trim())
   .filter(Boolean);
