@@ -129,7 +129,7 @@
           </button>
           <button id="btnAnchorOpen" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#191F28] hover:bg-[#333D4B] text-white transition cursor-pointer">
             <i data-lucide="link-2" class="w-3.5 h-3.5"></i>
-            ₿ 비트코인 앵커링
+            Base 앵커링
           </button>
           <button id="btnResetOpen" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white hover:bg-rose-50 hover:text-rose-600 text-[#6B7684] border border-[#E5E8EB] transition cursor-pointer">
             <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
@@ -205,7 +205,7 @@
             <span id="statDifficulty" class="text-base font-bold text-emerald-600 font-mono-code">00...</span>
             <span id="statAnchored" class="text-xs text-[#6B7684]">앵커 0</span>
           </div>
-          <div class="text-[11px] text-[#8B95A1] mt-1">₿ 비트코인 무료 증명</div>
+          <div class="text-[11px] text-[#8B95A1] mt-1">Base L2 온체인</div>
         </div>
       </div>
     </section>
@@ -270,7 +270,7 @@
                 </div>
                 <span id="basicStatusBadge" class="text-xs font-semibold text-[#8B95A1]">미해결</span>
               </div>
-              <p id="basicQuestion" class="text-[15px] text-[#191F28] leading-[1.7] font-medium whitespace-pre-line"></p>
+              <p id="basicQuestion" class="text-[15px] text-[#191F28] leading-[1.65] font-medium"></p>
               <form id="formBasic" class="flex gap-2">
                 <input id="inputBasic" type="text" autocomplete="off" placeholder="정답을 입력하세요" class="flex-1 bg-white border border-[#D1D6DB] rounded-xl px-3.5 py-2.5 text-sm text-[#191F28] placeholder-[#8B95A1] focus:outline-none focus:ring-2 focus:ring-[#3182F6] focus:border-transparent" />
                 <button id="btnCheckBasic" type="submit" class="px-4 py-2.5 rounded-xl text-xs font-bold bg-[#3182F6] hover:bg-[#1B64DA] text-white transition cursor-pointer shrink-0">
@@ -295,33 +295,6 @@
                   정답 확인
                 </button>
               </form>
-            </div>
-
-            <!-- PoW Mining Console -->
-            <div id="miningBox" class="rounded-2xl border border-[#E5E8EB] bg-white p-4 space-y-3">
-              <div class="flex items-center justify-between gap-2">
-                <span class="text-xs font-bold text-[#4E5968] flex items-center gap-1.5">
-                  <i data-lucide="cpu" class="w-4 h-4 text-emerald-600"></i>
-                  PoW 블록 채굴
-                </span>
-                <span id="miningTierLabel" class="text-xs font-semibold text-[#6B7684]">문제를 풀면 채굴이 열려요</span>
-              </div>
-
-              <div class="bg-[#F8FAFC] rounded-xl p-3 border border-[#E5E8EB] font-mono-code text-[11px] space-y-1">
-                <div class="flex justify-between text-[#6B7684]">
-                  <span>Nonce</span>
-                  <span id="liveNonce" class="text-emerald-600 font-bold">0</span>
-                </div>
-                <div class="text-[#6B7684]">
-                  <span class="text-[10px]">Candidate Hash</span>
-                  <div id="liveHash" class="text-[#333D4B] break-all mt-0.5">대기 중...</div>
-                </div>
-              </div>
-
-              <button id="btnMine" type="button" disabled class="w-full py-3.5 rounded-2xl font-bold text-sm transition flex items-center justify-center gap-2 disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer bg-[#F2F4F6] text-[#8B95A1]">
-                <i data-lucide="pickaxe" class="w-4 h-4"></i>
-                <span id="btnMineText">문제를 풀면 채굴할 수 있어요</span>
-              </button>
             </div>
           </div>
 
@@ -441,6 +414,33 @@
               </select>
             </div>
             <input id="mathNoteInput" type="text" maxlength="120" placeholder="예: 비례배분이 헷갈렸는데 끝까지 혼자 풀었다!" class="w-full bg-white border border-[#E5E8EB] rounded-xl px-3 py-2 text-xs text-[#191F28] placeholder-[#8B95A1] focus:outline-none focus:ring-2 focus:ring-[#3182F6]" />
+          </div>
+
+          <!-- PoW Mining Console (Right Column Footer) -->
+          <div id="miningBox" class="rounded-2xl border border-[#E5E8EB] bg-[#F9FAFB] p-4 space-y-3">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs font-bold text-[#4E5968] flex items-center gap-1.5">
+                <i data-lucide="cpu" class="w-4 h-4 text-emerald-600"></i>
+                PoW 블록 채굴
+              </span>
+              <span id="miningTierLabel" class="text-xs font-semibold text-[#6B7684]">문제를 풀면 채굴이 열려요</span>
+            </div>
+
+            <div class="bg-white rounded-xl p-3 border border-[#E5E8EB] font-mono-code text-[11px] space-y-1">
+              <div class="flex justify-between text-[#6B7684]">
+                <span>Nonce</span>
+                <span id="liveNonce" class="text-emerald-600 font-bold">0</span>
+              </div>
+              <div class="text-[#6B7684]">
+                <span class="text-[10px]">Candidate Hash</span>
+                <div id="liveHash" class="text-[#333D4B] break-all mt-0.5">대기 중...</div>
+              </div>
+            </div>
+
+            <button id="btnMine" type="button" disabled class="w-full py-3.5 rounded-2xl font-bold text-sm transition flex items-center justify-center gap-2 disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer bg-[#F2F4F6] text-[#8B95A1]">
+              <i data-lucide="pickaxe" class="w-4 h-4"></i>
+              <span id="btnMineText">문제를 풀면 채굴할 수 있어요</span>
+            </button>
           </div>
         </div>
       </div>
@@ -569,23 +569,23 @@
     </div>
   </div>
 
-  <!-- Modal: Bitcoin OpenTimestamps Free Anchoring -->
+  <!-- Modal: Base L2 On-chain Anchoring -->
   <div id="modalAnchor" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
     <div class="bg-white border border-[#E5E8EB] rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
       <div class="flex items-center justify-between">
-        <h3 class="text-base font-bold text-[#191F28]">₿ 비트코인 메인넷 무료 앵커링</h3>
+        <h3 class="text-base font-bold text-[#191F28]">⛓️ Base L2 온체인 앵커링</h3>
         <button id="btnCloseAnchor" type="button" class="text-[#8B95A1] hover:text-[#191F28] p-1 cursor-pointer">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
       <div id="anchorSummaryBox" class="rounded-2xl bg-[#F9FAFB] border border-[#E5E8EB] p-4 text-xs space-y-2 font-mono-code"></div>
       <p class="text-xs text-[#6B7684] leading-relaxed">
-        <strong>OpenTimestamps</strong> 프로토콜을 통해 지갑·가스비 없이(0원) 미앵커링 블록의 머클 루트를 실제 <strong>비트코인 메인넷</strong>에 영구 각인합니다. 생성된 <code class="text-amber-700 font-semibold">.ots</code> 증명 파일은 <a href="https://opentimestamps.org" target="_blank" rel="noopener noreferrer" class="text-[#3182F6] underline">opentimestamps.org</a>에서 평생 검증할 수 있습니다.
+        미앵커링 블록들의 머클 루트를 <code class="text-[#1B64DA] font-semibold">ShinPoWAnchor.sol</code> 컨트랙트에 기록하면 <strong>BaseScan</strong>에서 언제든 영구 검증할 수 있습니다.
       </p>
       <div class="flex justify-end gap-2 flex-wrap">
         <button id="btnCopyMerkle" type="button" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#F2F4F6] text-[#333D4B] hover:bg-[#E5E8EB] cursor-pointer">머클 루트 복사</button>
         <button id="btnDownloadLatestOts" type="button" class="hidden px-3.5 py-2 rounded-xl text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 cursor-pointer">.ots 증명 다운로드</button>
-        <button id="btnExecuteAnchor" type="button" class="px-4 py-2 rounded-xl text-xs font-bold bg-[#191F28] hover:bg-[#333D4B] disabled:opacity-40 text-white cursor-pointer disabled:cursor-not-allowed">₿ 지금 무료로 비트코인 앵커링</button>
+        <button id="btnExecuteAnchor" type="button" class="px-4 py-2 rounded-xl text-xs font-bold bg-[#3182F6] hover:bg-[#1B64DA] disabled:opacity-40 text-white cursor-pointer disabled:cursor-not-allowed">지갑으로 Base 앵커링 실행</button>
       </div>
     </div>
   </div>

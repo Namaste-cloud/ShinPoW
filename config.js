@@ -100,11 +100,11 @@ export const APP_CONFIG = {
 
   /**
    * [C] 영구 온체인 앵커링 설정
-   * - 기본값: 'opentimestamps' (비트코인 메인넷 · 100% 무료 · 지갑/가스비 불필요)
-   * - 선택 옵션: 'base' (Base Sepolia / Base Mainnet EVM 컨트랙트)
+   * - 기본값: 'base' (Base Sepolia 무료 테스트 -> 공식 런칭 시 Base Mainnet 전환)
+   * - 선택 옵션: 'opentimestamps' (비트코인 메인넷 .ots 증명)
    */
   onchain: {
-    provider: 'opentimestamps', // 'opentimestamps' | 'base'
+    provider: 'base', // 'base' | 'opentimestamps'
     opentimestamps: {
       calendars: [
         'https://a.pool.opentimestamps.org/digest',
