@@ -1087,6 +1087,11 @@ async function syncFeed({ silent = false } = {}) {
 
   const { addedCount, updatedCount } = mergeProblems(state.problems, res.problemsByStudent, studentIds);
   if (addedCount > 0 || updatedCount > 0) {
+    if (addedCount > 0) {
+      for (const sid of studentIds) {
+        state.selectedDayIndex[sid] = 0;
+      }
+    }
     saveState();
     renderAll();
     showToast(`피드에서 새 문제 ${addedCount}세트(갱신 ${updatedCount})를 불러왔습니다!`, 'success');

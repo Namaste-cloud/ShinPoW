@@ -61,8 +61,10 @@ export function mergeProblems(existingByStudent, incomingByStudent, validStudent
         const prev = list[idx];
         const changed =
           prev.label !== entry.label ||
+          prev.basic.topic !== entry.basic.topic ||
           prev.basic.question !== entry.basic.question ||
           prev.basic.answerHash !== entry.basic.answerHash ||
+          prev.adv.topic !== entry.adv.topic ||
           prev.adv.question !== entry.adv.question ||
           prev.adv.answerHash !== entry.adv.answerHash;
         if (changed) {

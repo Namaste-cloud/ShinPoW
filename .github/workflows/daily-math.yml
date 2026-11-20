@@ -2,8 +2,8 @@ name: Daily Gemini Math Problem Generator
 
 on:
   schedule:
-    # 매일 한국시간(KST) 오전 07:00 = UTC 22:00 자동 출제
-    - cron: '0 22 * * *'
+    # 매일 한국시간(KST) 오전 05:30 = UTC 20:30 자동 출제 및 라이브 배포
+    - cron: '30 20 * * *'
   workflow_dispatch:
     inputs:
       jihoon_basic_level:
@@ -29,6 +29,12 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
   generate:
@@ -39,7 +45,7 @@ jobs:
         with:
           node-version: 22
 
-      - name: Generate today's math problems via Gemini Pro API
+      - name: Generate today's math problems via Gemini Pro API (Jihoon & Leehyun)
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           JIHOON_BASIC_LEVEL: ${{ inputs.jihoon_basic_level }}
@@ -64,3 +70,19 @@ jobs:
             echo "No problem changes to commit."
           fi
 
+  deploy:
+    needs: generate
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+      - id: deployment
+        uses: actions/deploy-pages@v4
