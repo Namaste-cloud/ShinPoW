@@ -1,10 +1,10 @@
 /**
- * ShinPoW Service Worker (PWA 오프라인 지원)
- * - data/problems.json: Network-First (온라인이면 항상 최신 문제 반영, 오프라인이면 캐시 사용)
- * - 앱 셸 정적 자산: Stale-While-Revalidate (빠른 실행 + 자동 업데이트)
+ * ShinPoW Service Worker (PWA 오프라인 지원 · Network-First)
+ * - 온라인: 항상 최신 배포 버전(index.html, app.js, problems.json 등)을 즉시 반영
+ * - 오프라인: 캐시된 앱 셸과 문제 데이터로 끊김 없이 동작
  */
 
-const CACHE_NAME = 'shinpow-shell-v5';
+const CACHE_NAME = 'shinpow-shell-v6';
 const APP_SHELL = [
   './',
   './index.html',
@@ -46,34 +46,16 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  // 문제 피드 JSON은 항상 네트워크 우선 (최신 문제 즉시 반영)
-  if (url.pathname.endsWith('/problems.json')) {
-    event.respondWith(
-      fetch(req)
-        .then((res) => {
+  // Network-First: 온라인이면 항상 최신 배포본 즉시 표시, 오프라인이면 캐시 폴백
+  event.respondWith(
+    fetch(req, { cache: 'no-cache' })
+      .then((res) => {
+        if (res && res.ok) {
           const clone = res.clone();
           caches.open(CACHE_NAME).then((c) => c.put(req, clone)).catch(() => {});
-          return res;
-        })
-        .catch(() => caches.match(req))
-    );
-    return;
-  }
-
-  // 앱 셸은 Stale-While-Revalidate
-  event.respondWith(
-    caches.match(req).then((cached) => {
-      const networkFetch = fetch(req)
-        .then((res) => {
-          if (res && res.ok) {
-            const clone = res.clone();
-            caches.open(CACHE_NAME).then((c) => c.put(req, clone)).catch(() => {});
-          }
-          return res;
-        })
-        .catch(() => cached);
-      return cached || networkFetch;
-    })
+        }
+        return res;
+      })
+      .catch(() => caches.match(req))
   );
 });
-
