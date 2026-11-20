@@ -7,21 +7,21 @@ on:
   workflow_dispatch:
     inputs:
       jihoon_basic_level:
-        description: '신지훈 기본 문제 난이도 (1~5)'
+        description: '신지훈 기본 난이도 (비우면 data/difficulty.json 사용)'
         required: false
-        default: '3'
+        default: ''
       jihoon_adv_level:
-        description: '신지훈 심화 문제 난이도 (1~5)'
+        description: '신지훈 심화 난이도 (비우면 data/difficulty.json 사용)'
         required: false
-        default: '4'
+        default: ''
       leehyun_basic_level:
-        description: '신이현 기본 문제 난이도 (1~5)'
+        description: '신이현 기본 난이도 (비우면 data/difficulty.json 사용)'
         required: false
-        default: '3'
+        default: ''
       leehyun_adv_level:
-        description: '신이현 심화 문제 난이도 (1~5)'
+        description: '신이현 심화 난이도 (비우면 data/difficulty.json 사용)'
         required: false
-        default: '4'
+        default: ''
       topic_hint:
         description: '원하는 단원/테마 힌트 (선택, 예: 지훈 로보틱스, 이현 천문학)'
         required: false
@@ -39,14 +39,14 @@ jobs:
         with:
           node-version: 22
 
-      - name: Generate today's math problems via Gemini API
+      - name: Generate today's math problems via Gemini Pro API
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          JIHOON_BASIC_LEVEL: ${{ inputs.jihoon_basic_level || '3' }}
-          JIHOON_ADV_LEVEL: ${{ inputs.jihoon_adv_level || '4' }}
-          LEEHYUN_BASIC_LEVEL: ${{ inputs.leehyun_basic_level || '3' }}
-          LEEHYUN_ADV_LEVEL: ${{ inputs.leehyun_adv_level || '4' }}
-          TOPIC_HINT: ${{ inputs.topic_hint || '' }}
+          JIHOON_BASIC_LEVEL: ${{ inputs.jihoon_basic_level }}
+          JIHOON_ADV_LEVEL: ${{ inputs.jihoon_adv_level }}
+          LEEHYUN_BASIC_LEVEL: ${{ inputs.leehyun_basic_level }}
+          LEEHYUN_ADV_LEVEL: ${{ inputs.leehyun_adv_level }}
+          TOPIC_HINT: ${{ inputs.topic_hint }}
         run: node scripts/generate-daily-problems.mjs
 
       - name: Verify protocol & hashed problem integrity
@@ -63,3 +63,4 @@ jobs:
           else
             echo "No problem changes to commit."
           fi
+

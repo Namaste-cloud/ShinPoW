@@ -1,20 +1,12 @@
 #!/usr/bin/env node
 /**
- * ShinPoW Daily Gemini Math Problem Generator
+ * ShinPoW Daily Gemini Pro Math Problem Generator (100% Automated)
  * ---------------------------------------------------------------------------
- * .agents/skills/daily-math-coach/SKILL.md 지침을 그대로 시스템 프롬프트로 읽어
- * Gemini API로 오늘의 맞춤형 수학 문제(지훈 초6 · 이현 초3)를 생성하고,
- * 평문 정답을 즉시 SHA-256 answerHash로 변환해 data/problems.json 상단에 추가합니다.
- *
- * 환경변수:
- *   GEMINI_API_KEY       (필수) Google AI Studio API 키
- *   GEMINI_MODEL         (선택) 기본값: gemini-2.5-flash
- *   JIHOON_BASIC_LEVEL   (선택) 기본값: 3
- *   JIHOON_ADV_LEVEL     (선택) 기본값: 4
- *   LEEHYUN_BASIC_LEVEL  (선택) 기본값: 3
- *   LEEHYUN_ADV_LEVEL    (선택) 기본값: 4
- *   TOPIC_HINT           (선택) 특정 단원/테마 요청 (예: "지훈 로보틱스, 이현 천문학")
- *   TARGET_DATE          (선택) YYYY-MM-DD (미지정 시 한국 시간 오늘 날짜)
+ * 1. .agents/skills/daily-math-coach/SKILL.md 전체 지침을 시스템 프롬프트로 로드
+ * 2. data/difficulty.json에서 지훈·이현의 현재 난이도 & 포커스 메모 자동 로드
+ * 3. Gemini 2.5 Pro(우선) -> 2.5 Flash(폴백)로 Spark 수준의 심층 사고력 문제 생성
+ * 4. 모델 내부 자체 검산(verificationSteps)을 강제하여 수학적 오류 차단
+ * 5. 평문 정답을 즉시 SHA-256 answerHash로 변환 후 data/problems.json에 반영
  */
 
 import fs from 'node:fs/promises';
@@ -28,12 +20,10 @@ if (!API_KEY) {
   process.exit(1);
 }
 
-const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-const JIHOON_BASIC_LEVEL = process.env.JIHOON_BASIC_LEVEL || '3';
-const JIHOON_ADV_LEVEL = process.env.JIHOON_ADV_LEVEL || '4';
-const LEEHYUN_BASIC_LEVEL = process.env.LEEHYUN_BASIC_LEVEL || '3';
-const LEEHYUN_ADV_LEVEL = process.env.LEEHYUN_ADV_LEVEL || '4';
-const TOPIC_HINT = (process.env.TOPIC_HINT || '').trim();
+const MODELS = (process.env.GEMINI_MODEL || 'gemini-2.5-pro,gemini-2.5-flash')
+  .split(',')
+  .map((m) => m.trim())
+  .filter(Boolean);
 
 function getKstDateInfo(overrideDate) {
   const days = ['일', '월', '화', '수', '목', '금', '토'];
@@ -54,91 +44,118 @@ function getKstDateInfo(overrideDate) {
   return { dateStr, label: `${dateStr} (${dayName})` };
 }
 
+async function callGemini(model, systemPrompt, userPrompt) {
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(API_KEY)}`;
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      system_instruction: { parts: [{ text: systemPrompt }] },
+      contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+      generationConfig: {
+        temperature: 0.75,
+        responseMimeType: 'application/json'
+      }
+    })
+  });
+  if (!res.ok) {
+    const errBody = await res.text();
+    throw new Error(`${model} HTTP ${res.status}: ${errBody.slice(0, 260)}`);
+  }
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error(`${model}: 응답 텍스트 없음`);
+  return JSON.parse(text);
+}
+
 async function main() {
   const { dateStr, label } = getKstDateInfo(process.env.TARGET_DATE);
   const problemsPath = path.resolve('data/problems.json');
+  const difficultyPath = path.resolve('data/difficulty.json');
   const skillPath = path.resolve('.agents/skills/daily-math-coach/SKILL.md');
 
-  const [skillPrompt, rawProblems] = await Promise.all([
+  const [skillPrompt, rawProblems, rawDiff] = await Promise.all([
     fs.readFile(skillPath, 'utf8'),
-    fs.readFile(problemsPath, 'utf8')
+    fs.readFile(problemsPath, 'utf8'),
+    fs.readFile(difficultyPath, 'utf8').catch(() => '{}')
   ]);
 
   const db = JSON.parse(rawProblems);
-  const jhId = `jh-${dateStr}`;
-  const lhId = `lh-${dateStr}`;
+  const diff = JSON.parse(rawDiff || '{}');
+
+  const jBasic = process.env.JIHOON_BASIC_LEVEL || String(diff.jihoon?.basicLevel ?? 3);
+  const jAdv = process.env.JIHOON_ADV_LEVEL || String(diff.jihoon?.advLevel ?? 4);
+  const lBasic = process.env.LEEHYUN_BASIC_LEVEL || String(diff.leehyun?.basicLevel ?? 3);
+  const lAdv = process.env.LEEHYUN_ADV_LEVEL || String(diff.leehyun?.advLevel ?? 4);
+  const topicHint = (process.env.TOPIC_HINT || '').trim();
+  const jFocus = diff.jihoon?.focusNote || '';
+  const lFocus = diff.leehyun?.focusNote || '';
 
   const recentTopics = {
-    jihoon: (db.jihoon || []).slice(0, 5).flatMap((d) => [d.basic?.topic, d.adv?.topic]).filter(Boolean),
-    leehyun: (db.leehyun || []).slice(0, 5).flatMap((d) => [d.basic?.topic, d.adv?.topic]).filter(Boolean)
+    jihoon: (db.jihoon || []).slice(0, 6).flatMap((d) => [d.basic?.topic, d.adv?.topic]).filter(Boolean),
+    leehyun: (db.leehyun || []).slice(0, 6).flatMap((d) => [d.basic?.topic, d.adv?.topic]).filter(Boolean)
   };
 
   const userPrompt = `
 오늘 날짜: ${label}
-아래 조건에 맞춰 신지훈(초6)과 신이현(초3)의 오늘의 ShinPoW 수학 문제 세트를 생성하고, 반드시 순수 JSON 객체만 반환하세요.
+신지훈(초6)과 신이현(초3)을 위한 오늘의 ShinPoW 수학 문제 세트를 생성하고, 반드시 순수 JSON 객체만 반환하세요.
 
-[난이도 설정]
-- 신지훈 기본 문제: Level ${JIHOON_BASIC_LEVEL}
-- 신지훈 심화 문제: Level ${JIHOON_ADV_LEVEL}
-- 신이현 기본 문제: Level ${LEEHYUN_BASIC_LEVEL}
-- 신이현 심화 문제: Level ${LEEHYUN_ADV_LEVEL}
-${TOPIC_HINT ? `- 추가 주제 힌트: ${TOPIC_HINT}` : ''}
+[난이도 및 포커스 설정]
+- 신지훈 기본: Level ${jBasic} / 심화: Level ${jAdv} ${jFocus ? `(포커스: ${jFocus})` : ''}
+- 신이현 기본: Level ${lBasic} / 심화: Level ${lAdv} ${lFocus ? `(포커스: ${lFocus})` : ''}
+${topicHint ? `- 오늘의 특별 테마 힌트: ${topicHint}` : ''}
 
 [최근 출제된 단원 (중복 피하기)]
 - 신지훈 최근: ${recentTopics.jihoon.join(', ') || '없음'}
 - 신이현 최근: ${recentTopics.leehyun.join(', ') || '없음'}
 
-[중요 규칙]
-1. 각 문제는 수학적으로 100% 정확하고 정답이 유일해야 합니다. 출제 전에 스스로 검산하세요.
-2. question 끝에는 반드시 "(숫자만 입력)" 또는 "(예: 3/8 형태로 입력)"처럼 입력 형식을 안내하세요.
-3. answer는 단위 없이 숫자 또는 기약분수 문자열(예: "42", "10.8", "3/8")만 넣으세요.
-4. 아래 정확한 JSON 스키마로만 응답하세요:
+[절대 지켜야 할 문제 퀄리티 기준 (Spark/영재원 수준)]
+1. 단순 사칙연산 1단계 대입 문제(예: "24×3×15는?")는 절대 금지합니다.
+2. 최소 2~3단계의 논리적 발상·시각화·규칙 발견·STEAM 원리(물리 반사, 로보틱스 기어비, 천문학 주기, 대칭/전개도, 전략 게임, 정수론 통찰 등)가 결합된 몰입감 있는 스토리텔링 문제로 출제하세요.
+   - 좋은 퀄리티 예시: "가로 20cm, 세로 12cm 거울 상자에서 45도로 쏜 레이저가 다른 꼭짓점에 도달할 때까지 벽에 부딪히는 횟수"처럼 계산은 깔끔하지만 발상이 빛나는 문제!
+3. 각 문제의 question은 문단 줄바꿈(\\n\\n)을 활용해 읽기 편하게 구성하고, 제목([문제 제목])을 첫 줄에 넣으세요.
+4. question 맨 끝에는 반드시 "(숫자만 입력)" 또는 "(예: 3/8 형태로 입력)" 안내를 포함하세요.
+5. answer는 단위 없이 유일한 숫자 또는 기약분수 문자열(예: "6", "10.8", "3/8")만 넣고, 반드시 verificationSteps에 직접 검산 과정을 적은 뒤 최종 answer가 100% 일치하는지 확인하세요.
+
+[출력 JSON 스키마]
 {
   "jihoon": {
-    "id": "${jhId}",
+    "id": "jh-${dateStr}",
     "label": "${label}",
-    "basic": { "topic": "단원명 · ${JIHOON_BASIC_LEVEL}등급", "question": "...", "answer": "..." },
-    "adv": { "topic": "단원명 · ${JIHOON_ADV_LEVEL}등급", "question": "...", "answer": "..." }
+    "basic": { "topic": "단원명 · ${jBasic}등급", "question": "...", "verificationSteps": "...", "answer": "..." },
+    "adv": { "topic": "단원명 · ${jAdv}등급", "question": "...", "verificationSteps": "...", "answer": "..." }
   },
   "leehyun": {
-    "id": "${lhId}",
+    "id": "lh-${dateStr}",
     "label": "${label}",
-    "basic": { "topic": "단원명 · ${LEEHYUN_BASIC_LEVEL}등급", "question": "...", "answer": "..." },
-    "adv": { "topic": "단원명 · ${LEEHYUN_ADV_LEVEL}등급", "question": "...", "answer": "..." }
+    "basic": { "topic": "단원명 · ${lBasic}등급", "question": "...", "verificationSteps": "...", "answer": "..." },
+    "adv": { "topic": "단원명 · ${lAdv}등급", "question": "...", "verificationSteps": "...", "answer": "..." }
   }
 }
 `.trim();
 
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(MODEL)}:generateContent?key=${encodeURIComponent(API_KEY)}`;
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      system_instruction: { parts: [{ text: skillPrompt }] },
-      contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-      generationConfig: {
-        temperature: 0.7,
-        responseMimeType: 'application/json'
-      }
-    })
-  });
-
-  if (!res.ok) {
-    const errBody = await res.text();
-    throw new Error(`Gemini API 오류 (${res.status}): ${errBody.slice(0, 300)}`);
+  let generated = null;
+  let usedModel = '';
+  let lastErr = null;
+  for (const model of MODELS) {
+    try {
+      generated = await callGemini(model, skillPrompt, userPrompt);
+      usedModel = model;
+      break;
+    } catch (err) {
+      lastErr = err;
+      console.warn(`! ${model} 실패, 다음 모델로 폴백 시도: ${err.message}`);
+    }
   }
 
-  const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) {
-    throw new Error('Gemini API 응답에서 JSON 텍스트를 찾지 못했습니다.');
+  if (!generated) {
+    throw new Error(`모든 Gemini 모델 호출 실패: ${lastErr?.message}`);
   }
 
-  const generated = JSON.parse(text);
   const salt = APP_CONFIG.protocol.answerSalt;
-
   for (const sid of ['jihoon', 'leehyun']) {
     if (!generated[sid]) throw new Error(`${sid} 문제 객체가 누락되었습니다.`);
+    // normalizeProblemEntry strips plaintext answer & verificationSteps, keeping only answerHash
     const entry = await normalizeProblemEntry(sid, generated[sid], salt, 0);
     if (!Array.isArray(db[sid])) db[sid] = [];
     const existingIdx = db[sid].findIndex((p) => p.id === entry.id);
@@ -153,7 +170,7 @@ ${TOPIC_HINT ? `- 추가 주제 힌트: ${TOPIC_HINT}` : ''}
   db.updatedAt = new Date().toISOString();
 
   await fs.writeFile(problemsPath, JSON.stringify(db, null, 2) + '\n', 'utf8');
-  console.log(`✓ Gemini(${MODEL})로 ${label} 문제 생성 및 SHA-256 해시 반영 완료!`);
+  console.log(`✓ ${usedModel}로 ${label} Spark급 문제 자동 생성 및 SHA-256 해시 반영 완료!`);
 }
 
 main().catch((err) => {
