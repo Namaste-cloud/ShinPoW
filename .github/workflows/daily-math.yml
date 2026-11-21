@@ -2,8 +2,11 @@ name: Daily Gemini Math Problem Generator
 
 on:
   schedule:
-    # 매일 한국시간(KST) 오전 05:30 = UTC 20:30 자동 출제 및 라이브 배포
-    - cron: '30 20 * * *'
+    # GitHub Actions 정시(:00/:30) 혼잡 누락 방지를 위해 비정시 2중 스케줄 운영
+    # 1차: 매일 한국시간(KST) 오전 05:17 = UTC 20:17
+    - cron: '17 20 * * *'
+    # 2차 백업: 매일 한국시간(KST) 오전 05:47 = UTC 20:47 (1차 성공 시 중복 방지 자동 스킵)
+    - cron: '47 20 * * *'
   workflow_dispatch:
     inputs:
       jihoon_basic_level:
@@ -48,6 +51,7 @@ jobs:
       - name: Generate today's math problems via Gemini Pro API (Jihoon & Leehyun)
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          FORCE_REGENERATE: ${{ github.event_name == 'workflow_dispatch' }}
           JIHOON_BASIC_LEVEL: ${{ inputs.jihoon_basic_level }}
           JIHOON_ADV_LEVEL: ${{ inputs.jihoon_adv_level }}
           LEEHYUN_BASIC_LEVEL: ${{ inputs.leehyun_basic_level }}

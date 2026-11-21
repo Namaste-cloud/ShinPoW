@@ -81,6 +81,20 @@ async function main() {
   ]);
 
   const db = JSON.parse(rawProblems);
+  const forceRegen = String(process.env.FORCE_REGENERATE || '').toLowerCase() === 'true';
+  const jhId = `jh-${dateStr}`;
+  const lhId = `lh-${dateStr}`;
+  const alreadyHasToday =
+    Array.isArray(db.jihoon) &&
+    Array.isArray(db.leehyun) &&
+    db.jihoon.some((p) => p.id === jhId) &&
+    db.leehyun.some((p) => p.id === lhId);
+
+  if (alreadyHasToday && !forceRegen) {
+    console.log(`✓ ${label} 문제가 이미 등록되어 있어 건너뜁니다. (중복 출제 방지)`);
+    return;
+  }
+
   const diff = JSON.parse(rawDiff || '{}');
 
   const jBasic = process.env.JIHOON_BASIC_LEVEL || String(diff.jihoon?.basicLevel ?? 3);
@@ -111,8 +125,7 @@ ${topicHint ? `- 오늘의 특별 테마 힌트: ${topicHint}` : ''}
 
 [절대 지켜야 할 문제 퀄리티 기준 (Spark/영재원 수준)]
 1. 단순 사칙연산 1단계 대입 문제(예: "24×3×15는?")는 절대 금지합니다.
-2. 최소 2~3단계의 논리적 발상·시각화·규칙 발견·STEAM 원리(물리 반사, 로보틱스 기어비, 천문학 주기, 대칭/전개도, 전략 게임, 정수론 통찰 등)가 결합된 몰입감 있는 스토리텔링 문제로 출제하세요.
-   - 좋은 퀄리티 예시: "가로 20cm, 세로 12cm 거울 상자에서 45도로 쏜 레이저가 다른 꼭짓점에 도달할 때까지 벽에 부딪히는 횟수"처럼 계산은 깔끔하지만 발상이 빛나는 문제!
+2. 최소 2~3단계의 논리적 발상·시각화·규칙 발견·STEAM 원리(물리·기하·로보틱스·천문학·대칭/전개도·전략 게임·정수론 통찰 등)가 결합된 몰입감 있는 스토리텔링 문제로 출제하세요. (계산은 깔끔하되 발상이 빛나는 영재원·KMO 입문 수준)
 3. 각 문제의 question은 문단 줄바꿈(\\n\\n)을 활용해 읽기 편하게 구성하고, 제목([문제 제목])을 첫 줄에 넣으세요.
 4. question 맨 끝에는 반드시 "(숫자만 입력)" 또는 "(예: 3/8 형태로 입력)" 안내를 포함하세요.
 5. answer는 단위 없이 유일한 숫자 또는 기약분수 문자열(예: "6", "10.8", "3/8")만 넣고, 반드시 verificationSteps에 직접 검산 과정을 적은 뒤 최종 answer가 100% 일치하는지 확인하세요.
