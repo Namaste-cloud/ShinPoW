@@ -84,11 +84,18 @@ export const APP_CONFIG = {
   },
 
   /**
-   * [B] 로컬 저장소 설정 (공식 제네시스 전환으로 프리뷰 데이터와 자동 분리)
+   * [B] 로컬 + 클라우드 실시간 동기화 & 자동 Base Relayer 설정
    */
   storage: {
     localStorageKey: 'shinpow_ledger_official_v1',
     legacyStorageKey: 'shinpow_ledger_v1'
+  },
+
+  cloud: {
+    enabled: true,
+    apiUrl: 'https://shinpow-api.shinpow-worker.workers.dev',
+    autoSyncOnLoad: true,
+    autoAnchorOnMine: true
   },
 
   /**

@@ -35,6 +35,7 @@ import {
   validateAndParseLedgerBundle
 } from './adapters/storageAdapter.js';
 import { fetchProblemFeed, mergeProblems } from './adapters/feedAdapter.js';
+import { syncCloudLedger, resetCloudLedger } from './adapters/cloudAdapter.js';
 import { anchorBatchOnchain, getExplorerTxUrl } from './adapters/onchainAdapter.js';
 import {
   anchorBatchOpenTimestamps,
@@ -990,6 +991,11 @@ async function runPowMining({ sid, module, tier, rewardAmount, payload, onSucces
     const tierMeta = APP_CONFIG.tiers[tier] || { label: tier };
     const deltaLabel = rewardAmount === 0 ? '영구 기록 완료' : formatTimeDelta(rewardAmount);
     showToast(`Block #${newBlock.index} ${tierMeta.label} 완료! (${deltaLabel})`, tier === 'MASTER' ? 'gold' : 'success');
+
+    // 클라우드 실시간 동기화 + Base L2 자동 온체인 기록 (백그라운드)
+    if (APP_CONFIG.cloud?.enabled && APP_CONFIG.cloud?.autoAnchorOnMine) {
+      syncWithCloud({ silent: true, announceAnchor: true });
+    }
   } catch (err) {
     state.isMining = false;
     renderMiningConsole();
@@ -1107,6 +1113,56 @@ async function syncFeed({ silent = false } = {}) {
     showToast(`피드에서 새 문제 ${addedCount}세트(갱신 ${updatedCount})를 불러왔습니다!`, 'success');
   } else if (!silent) {
     showToast('이미 최신 문제 피드 상태입니다.', 'info');
+  }
+}
+
+async function syncWithCloud({ silent = true, announceAnchor = false } = {}) {
+  if (!APP_CONFIG.cloud?.enabled) return;
+  const res = await syncCloudLedger({
+    cloudConfig: APP_CONFIG.cloud,
+    chains: state.chains,
+    solved: state.solved
+  });
+  if (!res || !res.ok) {
+    if (!silent && !res?.skipped) {
+      showToast(`클라우드 동기화 대기 중: ${res?.error || '오프라인'}`, 'info');
+    }
+    return;
+  }
+
+  let changed = false;
+  if (res.chains) {
+    for (const sid of studentIds) {
+      const serverChain = res.chains[sid];
+      if (Array.isArray(serverChain) && serverChain.length > 0) {
+        const localStr = JSON.stringify(state.chains[sid]);
+        const serverStr = JSON.stringify(serverChain);
+        if (localStr !== serverStr) {
+          state.chains[sid] = serverChain;
+          state.selectedBlockIndex[sid] = Math.max(0, serverChain.length - 1);
+          changed = true;
+        }
+      }
+    }
+  }
+  if (res.solved) {
+    const localSolved = JSON.stringify(state.solved);
+    const serverSolved = JSON.stringify(res.solved);
+    if (localSolved !== serverSolved) {
+      state.solved = res.solved;
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    saveState();
+    renderAll();
+  }
+
+  if (announceAnchor && Array.isArray(res.newlyAnchored) && res.newlyAnchored.length > 0) {
+    showToast(`⛓️ Base 체인 자동 기록 완료! (${res.newlyAnchored.length}블록 · BaseScan 링크 연결됨)`, 'gold');
+  } else if (!silent) {
+    showToast('☁️ 클라우드 원장 동기화 완료!', 'success');
   }
 }
 
@@ -1350,7 +1406,10 @@ function bindEvents() {
     }
   });
 
-  document.getElementById('btnSyncFeed').addEventListener('click', () => syncFeed({ silent: false }));
+  document.getElementById('btnSyncFeed').addEventListener('click', async () => {
+    await syncFeed({ silent: false });
+    await syncWithCloud({ silent: false, announceAnchor: true });
+  });
 
   // Export Ledger Backup
   document.getElementById('btnExportJson').addEventListener('click', () => {
@@ -1487,6 +1546,7 @@ function bindEvents() {
   document.getElementById('btnCancelReset').addEventListener('click', () => closeModal('modalReset'));
   document.getElementById('btnConfirmReset').addEventListener('click', async () => {
     storage.clear();
+    await resetCloudLedger({ cloudConfig: APP_CONFIG.cloud, parentPin: APP_CONFIG.parentPin });
     state.selectedDayIndex = { jihoon: 0, leehyun: 0 };
     state.solved = { jihoon: {}, leehyun: {} };
     state.problems = structuredClone(DEFAULT_MATH_PROBLEMS);
@@ -1526,6 +1586,9 @@ async function bootstrap() {
   registerServiceWorker();
   if (APP_CONFIG.feed.autoSyncOnLoad) {
     await syncFeed({ silent: true });
+  }
+  if (APP_CONFIG.cloud?.enabled && APP_CONFIG.cloud?.autoSyncOnLoad) {
+    await syncWithCloud({ silent: true, announceAnchor: true });
   }
 }
 

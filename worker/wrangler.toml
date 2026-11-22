@@ -1,0 +1,14 @@
+name = "shinpow-api"
+main = "src/index.js"
+compatibility_date = "2025-11-01"
+
+[vars]
+CONTRACT_ADDRESS = "0x53D2A84Bf2B6D23347E21BaE50A7942eA10Ba4E4"
+BASE_NETWORK = "base-sepolia"
+BASE_CHAIN_ID = "84532"
+BASE_RPC_URL = "https://base-sepolia-rpc.publicnode.com"
+
+[[kv_namespaces]]
+binding = "SHINPOW_KV"
+id = "97d860be4a224aafacdf2812a92eba3d"
+
