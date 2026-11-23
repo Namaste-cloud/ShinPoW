@@ -20,7 +20,10 @@ if (!API_KEY) {
   process.exit(1);
 }
 
-const MODELS = (process.env.GEMINI_MODEL || 'gemini-3.1-pro-preview,gemini-3.8-flash')
+const MODELS = (
+  process.env.GEMINI_MODEL ||
+  'gemini-3.1-pro-preview,gemini-3.8-flash,gemini-3.7-flash,gemini-3.6-flash,gemini-3.5-flash,gemini-3-flash-preview'
+)
   .split(',')
   .map((m) => m.trim())
   .filter(Boolean);
@@ -72,7 +75,8 @@ async function callGemini(model, systemPrompt, userPrompt) {
 
     const errBody = await res.text();
     lastErr = new Error(`${model} HTTP ${res.status}: ${errBody.slice(0, 260)}`);
-    const isTransient = res.status === 429 || res.status === 500 || res.status === 503 || res.status === 504;
+    const isQuotaExhausted = res.status === 429 && /exceeded your current quota/i.test(errBody);
+    const isTransient = !isQuotaExhausted && (res.status === 429 || res.status === 500 || res.status === 503 || res.status === 504);
     if (!isTransient || attempt === retryDelaysMs.length) {
       throw lastErr;
     }
