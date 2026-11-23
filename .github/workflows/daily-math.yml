@@ -29,6 +29,10 @@ on:
         description: '원하는 단원/테마 힌트 (선택, 예: 지훈 로보틱스, 이현 천문학)'
         required: false
         default: ''
+      force:
+        description: '오늘 문제가 이미 있어도 강제 재생성 (true/false)'
+        required: false
+        default: 'false'
 
 permissions:
   contents: write
@@ -51,7 +55,7 @@ jobs:
       - name: Generate today's math problems via Gemini Pro API (Jihoon & Leehyun)
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          FORCE_REGENERATE: ${{ github.event_name == 'workflow_dispatch' }}
+          FORCE_REGENERATE: ${{ inputs.force == 'true' }}
           JIHOON_BASIC_LEVEL: ${{ inputs.jihoon_basic_level }}
           JIHOON_ADV_LEVEL: ${{ inputs.jihoon_adv_level }}
           LEEHYUN_BASIC_LEVEL: ${{ inputs.leehyun_basic_level }}

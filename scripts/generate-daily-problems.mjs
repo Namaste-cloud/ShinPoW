@@ -46,26 +46,42 @@ function getKstDateInfo(overrideDate) {
 
 async function callGemini(model, systemPrompt, userPrompt) {
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(API_KEY)}`;
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      system_instruction: { parts: [{ text: systemPrompt }] },
-      contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-      generationConfig: {
-        temperature: 0.75,
-        responseMimeType: 'application/json'
-      }
-    })
-  });
-  if (!res.ok) {
+  const retryDelaysMs = [5000, 15000, 30000];
+  let lastErr = null;
+
+  for (let attempt = 0; attempt <= retryDelaysMs.length; attempt++) {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+        generationConfig: {
+          temperature: 0.75,
+          responseMimeType: 'application/json'
+        }
+      })
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) throw new Error(`${model}: 응답 텍스트 없음`);
+      return JSON.parse(text);
+    }
+
     const errBody = await res.text();
-    throw new Error(`${model} HTTP ${res.status}: ${errBody.slice(0, 260)}`);
+    lastErr = new Error(`${model} HTTP ${res.status}: ${errBody.slice(0, 260)}`);
+    const isTransient = res.status === 429 || res.status === 500 || res.status === 503 || res.status === 504;
+    if (!isTransient || attempt === retryDelaysMs.length) {
+      throw lastErr;
+    }
+    const waitMs = retryDelaysMs[attempt];
+    console.warn(`! ${model} 일시 혼잡(HTTP ${res.status}), ${waitMs / 1000}초 후 재시도 (${attempt + 1}/${retryDelaysMs.length})...`);
+    await new Promise((r) => setTimeout(r, waitMs));
   }
-  const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error(`${model}: 응답 텍스트 없음`);
-  return JSON.parse(text);
+
+  throw lastErr;
 }
 
 async function main() {

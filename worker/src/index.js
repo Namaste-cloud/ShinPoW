@@ -263,6 +263,34 @@ export default {
     }
 
     return jsonResponse({ ok: false, error: 'Not Found' }, request, 404);
+  },
+
+  /**
+   * Cloudflare Cron Trigger (05:25 & 05:55 KST)
+   * GitHub Actions 무료 크론의 누락을 막기 위해 Cloudflare에서 직접 workflow_dispatch 호출
+   */
+  async scheduled(_controller, env) {
+    if (!env.GH_DISPATCH_TOKEN) {
+      console.warn('GH_DISPATCH_TOKEN not set; skipping daily-math dispatch');
+      return;
+    }
+    const res = await fetch(
+      'https://api.github.com/repos/Namaste-cloud/ShinPoW/actions/workflows/daily-math.yml/dispatches',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${env.GH_DISPATCH_TOKEN}`,
+          Accept: 'application/vnd.github+json',
+          'User-Agent': 'shinpow-worker-cron',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ref: 'main',
+          inputs: { force: 'false' }
+        })
+      }
+    );
+    console.log('GitHub daily-math dispatch status:', res.status);
   }
 };
 

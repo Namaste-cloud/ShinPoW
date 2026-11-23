@@ -12,3 +12,8 @@ BASE_RPC_URL = "https://base-sepolia-rpc.publicnode.com"
 binding = "SHINPOW_KV"
 id = "97d860be4a224aafacdf2812a92eba3d"
 
+[triggers]
+# Cloudflare 고정밀 크론 (GitHub Actions 무료 크론 누락 방지)
+# 매일 한국시간 05:25(1차) & 05:55(2차 백업) = UTC 20:25, 20:55
+crons = ["25 20 * * *", "55 20 * * *"]
+
